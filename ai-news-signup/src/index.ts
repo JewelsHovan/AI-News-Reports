@@ -10,7 +10,7 @@ const app = new Hono<{ Bindings: Env }>();
 
 // CORS - allow requests from GitHub Pages and localhost
 app.use('*', cors({
-  origin: ['https://yourusername.github.io', 'http://localhost:3000', 'http://localhost:8080'],
+  origin: ['https://julienhovan.com', 'https://jewelshovan.github.io', 'http://localhost:3000', 'http://localhost:8080'],
   allowMethods: ['GET', 'POST', 'OPTIONS'],
   allowHeaders: ['Content-Type'],
   maxAge: 86400,

@@ -1,0 +1,12 @@
+name = "ai-news-signup"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-news-subscribers"
+database_id = "ce3da545-df65-47b7-aa27-c2f740edc1e9"
+
+[vars]
+WORKER_URL = "https://ai-news-signup.your-subdomain.workers.dev"
+SENDER_EMAIL = "julien.hovan@compassdata.ca"

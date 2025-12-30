@@ -1,0 +1,22 @@
+{
+  "name": "ai-news-signup",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for AI News newsletter signup with D1 database",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create ai-news-subscribers",
+    "db:migrate": "wrangler d1 execute ai-news-subscribers --file=./schema.sql",
+    "db:migrate:local": "wrangler d1 execute ai-news-subscribers --local --file=./schema.sql",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.54.0"
+  }
+}

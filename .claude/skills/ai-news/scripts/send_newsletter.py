@@ -7,12 +7,15 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib import error, request
+from urllib.parse import urlparse
 
 try:
     import msal
@@ -29,6 +32,12 @@ class Recipient:
     name: str
     email: str
     active: bool = True
+
+
+@dataclass
+class RecipientWithUnsubscribe:
+    recipient: Recipient
+    unsubscribe_url: str
 
 
 class _TextExtractor(HTMLParser):
@@ -90,6 +99,101 @@ def _load_recipients(path: Path) -> list[Recipient]:
             )
         )
     return recipients
+
+
+def _validate_api_url(url: str) -> None:
+    """Validate that the API URL uses HTTPS."""
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError(f"API URL must use HTTPS for security, got: {parsed.scheme}://{parsed.netloc}")
+    if not parsed.netloc:
+        raise ValueError("API URL must include a hostname")
+
+
+def _load_recipients_from_api(url: str, secret: str) -> list[RecipientWithUnsubscribe]:
+    """Fetch subscribers from the API endpoint.
+
+    Args:
+        url: Base URL of the subscribers API (e.g., https://worker.dev/api/subscribers)
+        secret: API secret for authentication
+
+    Returns:
+        List of RecipientWithUnsubscribe objects for active subscribers
+
+    Raises:
+        RuntimeError: If the API request fails or returns an error
+        ValueError: If the API URL does not use HTTPS
+    """
+    _validate_api_url(url)
+    api_url = f"{url}?secret={secret}"
+
+    req = request.Request(
+        api_url,
+        headers={"Accept": "application/json"},
+        method="GET",
+    )
+
+    try:
+        with request.urlopen(req, timeout=30) as resp:
+            status = resp.getcode()
+            body = resp.read().decode("utf-8")
+    except error.HTTPError as exc:
+        status = exc.code
+        body = exc.read().decode("utf-8")
+        raise RuntimeError(f"API error {status}: {body}") from exc
+    except error.URLError as exc:
+        raise RuntimeError(f"Failed to connect to API: {exc.reason}") from exc
+
+    if status != 200:
+        raise RuntimeError(f"Unexpected API status {status}: {body}")
+
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Invalid JSON response from API: {exc}") from exc
+
+    if not data.get("success"):
+        raise RuntimeError(f"API returned error: {data}")
+
+    subscribers = data.get("data", [])
+    if not isinstance(subscribers, list):
+        raise RuntimeError("API response 'data' field must be an array")
+
+    recipients: list[RecipientWithUnsubscribe] = []
+    for entry in subscribers:
+        if not isinstance(entry, dict):
+            continue
+        email = (entry.get("email") or "").strip()
+        if not email:
+            continue
+        # Only include active subscribers
+        if not entry.get("active", True):
+            continue
+        unsubscribe_url = (entry.get("unsubscribeUrl") or "").strip()
+        recipients.append(
+            RecipientWithUnsubscribe(
+                recipient=Recipient(
+                    name=(entry.get("name") or "").strip() or email,
+                    email=email,
+                    active=True,
+                ),
+                unsubscribe_url=unsubscribe_url,
+            )
+        )
+    return recipients
+
+
+def _personalize_html(html: str, unsubscribe_url: str) -> str:
+    """Replace the {UNSUBSCRIBE_LINK} placeholder with the actual unsubscribe URL.
+
+    Args:
+        html: HTML content with optional {UNSUBSCRIBE_LINK} placeholder
+        unsubscribe_url: The personalized unsubscribe URL for this recipient
+
+    Returns:
+        HTML with the placeholder replaced
+    """
+    return html.replace("{UNSUBSCRIBE_LINK}", unsubscribe_url)
 
 
 def _html_to_text(html: str) -> str:
@@ -209,6 +313,31 @@ def _get_access_token(config: dict[str, Any], client_secret: str | None, verbose
     return token
 
 
+def _build_mime_message(
+    sender_email: str,
+    recipient: Recipient,
+    subject: str,
+    html_body: str,
+    text_body: str,
+) -> str:
+    """Build a proper MIME multipart/alternative message with both text and HTML."""
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = f"{recipient.name} <{recipient.email}>"
+    msg["Date"] = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+
+    # Plain text part (comes first, lower priority)
+    text_part = MIMEText(text_body, "plain", "utf-8")
+    msg.attach(text_part)
+
+    # HTML part (comes second, higher priority - email clients prefer last)
+    html_part = MIMEText(html_body, "html", "utf-8")
+    msg.attach(html_part)
+
+    return msg.as_string()
+
+
 def _send_message(
     token: str,
     endpoint: str,
@@ -219,71 +348,93 @@ def _send_message(
     text_body: str,
     dry_run: bool,
     verbose: bool,
+    use_mime: bool = True,
 ) -> None:
-    payload: dict[str, Any] = {
-        "message": {
-            "subject": subject,
-            "body": {"contentType": "HTML", "content": html_body},
-            "toRecipients": [
-                {
-                    "emailAddress": {
-                        "address": recipient.email,
-                        "name": recipient.name,
-                    }
-                }
-            ],
-        },
-        "saveToSentItems": True,
-    }
-
-    if sender_email:
-        payload["message"]["from"] = {
-            "emailAddress": {"address": sender_email}
-        }
-
-    if text_body:
-        payload["message"]["attachments"] = [
-            {
-                "@odata.type": "#microsoft.graph.fileAttachment",
-                "name": "report.txt",
-                "contentType": "text/plain",
-                "contentBytes": base64.b64encode(text_body.encode("utf-8")).decode(
-                    "ascii"
-                ),
-            }
-        ]
-
     if dry_run:
         sys.stderr.write(
             f"dry-run: would send to {recipient.email} via {endpoint}\n"
         )
         return
 
-    data = json.dumps(payload, ensure_ascii=True).encode("utf-8")
-    req = request.Request(
-        endpoint,
-        data=data,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    if use_mime and text_body:
+        # Build proper MIME multipart/alternative message
+        mime_content = _build_mime_message(
+            sender_email, recipient, subject, html_body, text_body
+        )
+        mime_b64 = base64.b64encode(mime_content.encode("utf-8")).decode("ascii")
 
-    try:
-        with request.urlopen(req) as resp:
-            status = resp.getcode()
-            body = resp.read().decode("utf-8")
-    except error.HTTPError as exc:
-        status = exc.code
-        body = exc.read().decode("utf-8")
-        raise RuntimeError(f"Graph API error {status}: {body}") from exc
+        # Send raw MIME directly via /sendMail - only requires Mail.Send permission
+        req = request.Request(
+            endpoint,
+            data=mime_b64.encode("ascii"),
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "text/plain",  # MS Graph expects base64 MIME as text/plain
+            },
+            method="POST",
+        )
 
-    if status not in {200, 201, 202, 204}:
-        raise RuntimeError(f"unexpected Graph API status {status}: {body}")
+        try:
+            with request.urlopen(req, timeout=30) as resp:
+                status = resp.getcode()
+        except error.HTTPError as exc:
+            status = exc.code
+            resp_body = exc.read().decode("utf-8")
+            raise RuntimeError(f"Graph API error {status}: {resp_body}") from exc
 
-    if verbose:
-        sys.stderr.write(f"info: sent to {recipient.email} (status {status})\n")
+        if status not in {200, 202}:
+            raise RuntimeError(f"unexpected Graph API status {status}")
+
+        if verbose:
+            sys.stderr.write(f"info: sent MIME message to {recipient.email} (status {status})\n")
+    else:
+        # Fallback to JSON API (HTML only)
+        payload: dict[str, Any] = {
+            "message": {
+                "subject": subject,
+                "body": {"contentType": "HTML", "content": html_body},
+                "toRecipients": [
+                    {
+                        "emailAddress": {
+                            "address": recipient.email,
+                            "name": recipient.name,
+                        }
+                    }
+                ],
+            },
+            "saveToSentItems": True,
+        }
+
+        if sender_email:
+            payload["message"]["from"] = {
+                "emailAddress": {"address": sender_email}
+            }
+
+        data = json.dumps(payload, ensure_ascii=True).encode("utf-8")
+        req = request.Request(
+            endpoint,
+            data=data,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+
+        try:
+            with request.urlopen(req, timeout=30) as resp:
+                status = resp.getcode()
+                body = resp.read().decode("utf-8")
+        except error.HTTPError as exc:
+            status = exc.code
+            body = exc.read().decode("utf-8")
+            raise RuntimeError(f"Graph API error {status}: {body}") from exc
+
+        if status not in {200, 201, 202, 204}:
+            raise RuntimeError(f"unexpected Graph API status {status}: {body}")
+
+        if verbose:
+            sys.stderr.write(f"info: sent to {recipient.email} (status {status})\n")
 
 
 def _log_sent(log_path: Path, email: str) -> None:
@@ -300,6 +451,11 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="Ignore sent log")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument(
+        "--no-mime",
+        action="store_true",
+        help="Use JSON API instead of MIME (no multipart/alternative)",
+    )
+    parser.add_argument(
         "--config",
         default=str(DEFAULT_CONFIG),
         help="Path to email_config.json",
@@ -309,6 +465,14 @@ def main() -> int:
         default=str(DEFAULT_RECIPIENTS),
         help="Path to recipients.json",
     )
+    parser.add_argument(
+        "--api-url",
+        help="URL to fetch subscribers from (e.g., https://worker.dev/api/subscribers)",
+    )
+    parser.add_argument(
+        "--api-secret",
+        help="Secret for API authentication (passed as ?secret= query param)",
+    )
 
     args = parser.parse_args()
 
@@ -316,14 +480,31 @@ def main() -> int:
     recipients_path = Path(args.recipients).resolve()
 
     config = _load_json(config_path)
-    recipients = _load_recipients(recipients_path)
+
+    # Determine recipient source: API or file-based
+    use_api = bool(args.api_url)
+    recipients_with_unsubscribe: list[RecipientWithUnsubscribe] = []
+    recipients: list[Recipient] = []
+
+    if use_api:
+        if not args.api_secret:
+            raise RuntimeError("--api-secret is required when using --api-url")
+        recipients_with_unsubscribe = _load_recipients_from_api(args.api_url, args.api_secret)
+        if args.verbose:
+            sys.stderr.write(f"info: loaded {len(recipients_with_unsubscribe)} subscribers from API\n")
+    else:
+        # File-based loading (backwards compat for POC/testing)
+        recipients = _load_recipients(recipients_path)
 
     if args.test_email:
+        # Test mode overrides both API and file-based recipients
         recipients = [Recipient(name=args.test_email, email=args.test_email, active=True)]
-    else:
+        recipients_with_unsubscribe = []
+        use_api = False
+    elif not use_api:
         recipients = [rec for rec in recipients if rec.active]
 
-    if not recipients:
+    if not recipients and not recipients_with_unsubscribe:
         raise RuntimeError("no active recipients")
 
     report_path = _resolve_path(config.get("report_path", "reports/latest.html"))
@@ -382,30 +563,67 @@ def main() -> int:
     if log_path.exists():
         sent_emails = {line.strip().lower() for line in log_path.read_text().splitlines() if line.strip()}
 
-    for idx, recipient in enumerate(recipients):
-        email_key = recipient.email.lower()
-        if email_key in sent_emails and not args.force:
-            if args.verbose:
-                sys.stderr.write(f"info: skipping {recipient.email} (already sent)\n")
-            continue
+    if use_api:
+        # API-sourced recipients: personalize HTML with unsubscribe URL
+        total = len(recipients_with_unsubscribe)
+        for idx, rec_with_unsub in enumerate(recipients_with_unsubscribe):
+            recipient = rec_with_unsub.recipient
+            email_key = recipient.email.lower()
+            if email_key in sent_emails and not args.force:
+                if args.verbose:
+                    sys.stderr.write(f"info: skipping {recipient.email} (already sent)\n")
+                continue
 
-        _send_message(
-            token,
-            endpoint,
-            sender_email,
-            recipient,
-            subject,
-            html_body,
-            text_body,
-            args.dry_run,
-            args.verbose,
-        )
+            # Personalize HTML with recipient's unsubscribe URL
+            personalized_html = _personalize_html(html_body, rec_with_unsub.unsubscribe_url)
+            personalized_text = _html_to_text(personalized_html)
 
-        if not args.dry_run:
-            _log_sent(log_path, recipient.email)
+            _send_message(
+                token,
+                endpoint,
+                sender_email,
+                recipient,
+                subject,
+                personalized_html,
+                personalized_text,
+                args.dry_run,
+                args.verbose,
+                use_mime=not args.no_mime,
+            )
 
-        if idx < len(recipients) - 1:
-            time.sleep(2)
+            if not args.dry_run:
+                _log_sent(log_path, recipient.email)
+
+            if idx < total - 1:
+                time.sleep(2)
+    else:
+        # File-sourced recipients: use HTML as-is (no unsubscribe link)
+        total = len(recipients)
+        for idx, recipient in enumerate(recipients):
+            email_key = recipient.email.lower()
+            if email_key in sent_emails and not args.force:
+                if args.verbose:
+                    sys.stderr.write(f"info: skipping {recipient.email} (already sent)\n")
+                continue
+
+            _send_message(
+                token,
+                endpoint,
+                sender_email,
+                recipient,
+                subject,
+                html_body,
+                text_body,
+                args.dry_run,
+                args.verbose,
+                use_mime=not args.no_mime,
+            )
+
+            if not args.dry_run:
+                _log_sent(log_path, recipient.email)
+
+            if idx < total - 1:
+                time.sleep(2)
 
     return 0
 

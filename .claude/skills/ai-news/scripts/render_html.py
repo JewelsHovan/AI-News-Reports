@@ -1,4 +1,18 @@
 #!/usr/bin/env python3
+"""
+Render AI news report markdown to email-safe HTML.
+
+This module generates HTML that is compatible with email clients including
+Outlook Desktop (which uses Microsoft Word's ~2007 rendering engine).
+
+Key constraints for email HTML:
+- Table-based layout (no CSS Grid or Flexbox)
+- Inline styles only (no CSS variables, limited <style> support)
+- Fixed 600px content width (standard email width)
+- Safe fonts only (Arial, Helvetica, sans-serif)
+- No JavaScript (stripped by email clients)
+- No interactivity (no theme toggle, collapsible sections)
+"""
 import argparse
 import re
 import sys
@@ -11,13 +25,131 @@ except ImportError:
     markdown = None
 
 
+# =============================================================================
+# Style Configuration
+# =============================================================================
+
+# Color palette (flat values, no CSS variables)
+COLORS = {
+    "bg_outer": "#f5f5f5",
+    "bg_content": "#ffffff",
+    "bg_header": "#1e293b",
+    "bg_footer": "#f8fafc",
+    "bg_code": "#1e293b",
+    "bg_code_inline": "#f1f5f9",
+    "bg_blockquote": "#f1f5f9",
+    "bg_table_header": "#f1f5f9",
+    "text_primary": "#374151",
+    "text_heading": "#1e293b",
+    "text_heading_secondary": "#334155",
+    "text_heading_tertiary": "#475569",
+    "text_muted": "#64748b",
+    "text_header": "#ffffff",
+    "text_header_sub": "#94a3b8",
+    "text_code": "#e2e8f0",
+    "text_code_inline": "#be185d",
+    "accent": "#2563eb",
+    "border": "#e2e8f0",
+}
+
+# Inline styles for HTML elements
+INLINE_STYLES = {
+    "h1": (
+        f"font-size:28px; color:{COLORS['text_heading']}; margin:32px 0 12px; "
+        f"font-weight:700; font-family:Arial,Helvetica,sans-serif;"
+    ),
+    "h2": (
+        f"font-size:22px; color:{COLORS['text_heading_secondary']}; margin:28px 0 12px; "
+        f"font-weight:600; font-family:Arial,Helvetica,sans-serif; "
+        f"border-bottom:2px solid {COLORS['border']}; padding-bottom:10px;"
+    ),
+    "h3": (
+        f"font-size:18px; color:{COLORS['text_heading_tertiary']}; margin:24px 0 10px; "
+        f"font-weight:600; font-family:Arial,Helvetica,sans-serif;"
+    ),
+    "h4": (
+        f"font-size:16px; color:{COLORS['text_heading_tertiary']}; margin:20px 0 8px; "
+        f"font-weight:600; font-family:Arial,Helvetica,sans-serif;"
+    ),
+    "h5": (
+        f"font-size:15px; color:{COLORS['text_heading_tertiary']}; margin:18px 0 8px; "
+        f"font-weight:600; font-family:Arial,Helvetica,sans-serif;"
+    ),
+    "h6": (
+        f"font-size:14px; color:{COLORS['text_heading_tertiary']}; margin:16px 0 6px; "
+        f"font-weight:600; font-family:Arial,Helvetica,sans-serif;"
+    ),
+    "p": (
+        f"font-size:15px; color:{COLORS['text_primary']}; line-height:1.7; "
+        f"margin:0 0 14px; font-family:Arial,Helvetica,sans-serif;"
+    ),
+    "a": f"color:{COLORS['accent']}; text-decoration:underline;",
+    "ul": "margin:0 0 16px; padding-left:24px;",
+    "ol": "margin:0 0 16px; padding-left:24px;",
+    "li": (
+        f"font-size:15px; color:{COLORS['text_primary']}; line-height:1.7; "
+        f"margin-bottom:8px; font-family:Arial,Helvetica,sans-serif;"
+    ),
+    "blockquote": (
+        f"margin:16px 0; padding:14px 18px; background-color:{COLORS['bg_blockquote']}; "
+        f"border-left:4px solid {COLORS['accent']}; border-radius:0 6px 6px 0;"
+    ),
+    "table": "width:100%; border-collapse:collapse; margin:16px 0;",
+    "th": (
+        f"padding:12px 14px; background-color:{COLORS['bg_table_header']}; "
+        f"border:1px solid {COLORS['border']}; text-align:left; font-weight:600; "
+        f"font-size:14px; color:{COLORS['text_primary']};"
+    ),
+    "td": (
+        f"padding:12px 14px; border:1px solid {COLORS['border']}; "
+        f"font-size:14px; color:{COLORS['text_primary']};"
+    ),
+    "code": (
+        f"font-family:'Courier New',Courier,monospace; background-color:{COLORS['bg_code_inline']}; "
+        f"padding:2px 6px; font-size:13px; border-radius:4px; color:{COLORS['text_code_inline']};"
+    ),
+    "pre": (
+        f"background-color:{COLORS['bg_code']}; color:{COLORS['text_code']}; "
+        f"padding:16px 20px; font-family:'Courier New',Courier,monospace; "
+        f"font-size:13px; line-height:1.5; overflow-x:auto; border-radius:6px; margin:16px 0;"
+    ),
+    "hr": f"border:none; border-top:2px solid {COLORS['border']}; margin:28px 0;",
+    "strong": f"font-weight:700; color:{COLORS['text_heading']};",
+    "b": f"font-weight:700; color:{COLORS['text_heading']};",
+    "em": "font-style:italic;",
+    "i": "font-style:italic;",
+}
+
+
+# =============================================================================
+# Unsubscribe Footer Template
+# =============================================================================
+
+# The {UNSUBSCRIBE_LINK} placeholder will be replaced by send_newsletter.py
+# with a personalized unsubscribe URL for each recipient.
+UNSUBSCRIBE_FOOTER = '''
+              <!-- Unsubscribe Footer -->
+              <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 12px; color: #666666; font-family: Arial, Helvetica, sans-serif;">
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px;">You received this because you subscribed to AI News.</p>
+                <p style="margin: 0; color: #666666; font-size: 12px;"><a href="{UNSUBSCRIBE_LINK}" style="color: #666666; text-decoration: underline;">Unsubscribe</a></p>
+              </div>
+'''
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+
 def _read_markdown(input_path: Path | None) -> str:
+    """Read markdown content from file or stdin."""
     if input_path is None:
         return sys.stdin.read()
     return input_path.read_text(encoding="utf-8")
 
 
 def _first_heading(markdown_text: str) -> str | None:
+    """Extract the first H1 heading from markdown text."""
     for line in markdown_text.splitlines():
         if line.startswith("# "):
             return line[2:].strip()
@@ -25,6 +157,7 @@ def _first_heading(markdown_text: str) -> str | None:
 
 
 def _infer_date_range_from_name(path: Path | None) -> tuple[str | None, str | None]:
+    """Extract date range from filename pattern ai-news_YYYY-MM-DD_to_YYYY-MM-DD."""
     if path is None:
         return None, None
     match = re.search(r"ai-news_(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})", path.name)
@@ -33,7 +166,70 @@ def _infer_date_range_from_name(path: Path | None) -> tuple[str | None, str | No
     return match.group(1), match.group(2)
 
 
-def _render_html(markdown_text: str) -> tuple[str, str]:
+def _apply_inline_styles(html: str) -> str:
+    """
+    Inject inline styles into HTML elements for email client compatibility.
+
+    This function post-processes markdown-generated HTML to add inline styles
+    to each element, ensuring compatibility with email clients that strip
+    <style> blocks (like Outlook).
+
+    Args:
+        html: The HTML content generated by markdown conversion
+
+    Returns:
+        HTML with inline styles injected into each element
+    """
+
+    def inject_style(match: re.Match) -> str:
+        """Inject style attribute into an HTML tag."""
+        tag = match.group(1).lower()
+        existing_attrs = match.group(2) or ""
+        style = INLINE_STYLES.get(tag, "")
+
+        if not style:
+            return match.group(0)
+
+        # Check if there's already a style attribute
+        if 'style="' in existing_attrs.lower():
+            # Merge our style with existing style (our style takes precedence)
+            existing_attrs = re.sub(
+                r'style="([^"]*)"',
+                f'style="{style} \\1"',
+                existing_attrs,
+                flags=re.IGNORECASE
+            )
+            return f"<{tag}{existing_attrs}>"
+
+        # Add new style attribute
+        if existing_attrs and not existing_attrs.startswith(" "):
+            existing_attrs = " " + existing_attrs
+        return f'<{tag} style="{style}"{existing_attrs}>'
+
+    # Match opening tags for elements we want to style
+    # This pattern captures: <tagname optional-attributes>
+    pattern = r"<(h[1-6]|p|a|ul|ol|li|blockquote|table|th|td|code|pre|hr|strong|b|em|i)(\s[^>]*)?\s*/?>"
+
+    return re.sub(pattern, inject_style, html, flags=re.IGNORECASE)
+
+
+def _render_markdown_to_html(markdown_text: str) -> str:
+    """
+    Convert markdown to HTML using python-markdown.
+
+    Uses a minimal set of extensions for email-safe output:
+    - fenced_code: For code blocks
+    - tables: For markdown tables
+    - attr_list: For adding custom attributes (rarely used in reports)
+
+    Note: TOC extension is NOT used since we're removing the sidebar navigation.
+
+    Args:
+        markdown_text: Raw markdown content
+
+    Returns:
+        HTML body content (without wrapper)
+    """
     if markdown is None:
         raise RuntimeError(
             "python-markdown is required. Install with: pip install markdown"
@@ -43,23 +239,223 @@ def _render_html(markdown_text: str) -> tuple[str, str]:
         extensions=[
             "fenced_code",
             "tables",
-            "toc",
             "attr_list",
         ],
-        extension_configs={
-            "toc": {
-                "toc_depth": "2-3",
-            }
-        },
         output_format="html5",
     )
-    body_html = md.convert(markdown_text)
-    toc_html = md.toc or ""
-    return body_html, toc_html
+    return md.convert(markdown_text)
+
+
+def _escape_html(text: str) -> str:
+    """Escape special HTML characters."""
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def _strip_first_h1(html: str) -> str:
+    """
+    Remove the first H1 tag from HTML since title is already in header.
+
+    The email template displays the title in a styled header row, so having
+    the H1 repeated in the body content is redundant and wastes above-the-fold
+    space in email clients.
+
+    Args:
+        html: HTML body content from markdown conversion
+
+    Returns:
+        HTML with the first H1 element removed
+    """
+    return re.sub(r'<h1[^>]*>.*?</h1>\s*', '', html, count=1, flags=re.IGNORECASE | re.DOTALL)
+
+
+def _extract_preheader(html: str, max_length: int = 150) -> str:
+    """
+    Extract first paragraph text for email preheader.
+
+    The preheader appears in inbox previews next to the subject line and
+    improves open rates by giving recipients a preview of the content.
+
+    Args:
+        html: HTML body content to extract preview text from
+        max_length: Maximum length of preheader text (default 150 chars)
+
+    Returns:
+        Plain text suitable for preheader, or empty string if no content found
+    """
+    # Try to find Executive Summary content or first paragraph
+    match = re.search(r'<p[^>]*>(.*?)</p>', html, re.IGNORECASE | re.DOTALL)
+    if match:
+        # Strip HTML tags from the content
+        text = re.sub(r'<[^>]+>', '', match.group(1))
+        text = text.strip()
+        if len(text) > max_length:
+            text = text[:max_length].rsplit(' ', 1)[0] + '...'
+        return text
+    return ''
+
+
+def _build_email_template(
+    title: str,
+    date_range: str | None,
+    body_html: str,
+    timestamp: str,
+    preheader: str = "",
+) -> str:
+    """
+    Build the complete email-safe HTML document.
+
+    Structure:
+    - Outer table: Full-width wrapper with background color
+    - Inner table: 600px centered content container
+    - Header row: Title and date range
+    - Body row: Converted markdown content
+    - Footer row: Generation timestamp
+
+    Args:
+        title: Report title (from H1 heading)
+        date_range: Optional date range string (e.g., "2025-01-01 - 2025-01-07")
+        body_html: Styled HTML body content
+        timestamp: ISO timestamp of generation
+        preheader: Preview text shown in inbox next to subject line
+
+    Returns:
+        Complete HTML document as string
+    """
+    # Build date range row if provided
+    date_row = ""
+    if date_range:
+        date_row = f'''
+              <p style="margin:10px 0 0; color:{COLORS['text_header_sub']}; font-size:14px; font-family:Arial,Helvetica,sans-serif;">
+                {_escape_html(date_range)}
+              </p>'''
+
+    # Build preheader div if we have preheader text
+    preheader_div = ""
+    if preheader:
+        preheader_div = f'''
+  <!--[if !mso]><!-->
+  <div style="display:none;font-size:1px;color:{COLORS['bg_outer']};line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">
+    {_escape_html(preheader)}
+  </div>
+  <!--<![endif]-->'''
+
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>{_escape_html(title)}</title>
+  <!--[if mso]>
+  <style type="text/css">
+    table {{ border-collapse: collapse; }}
+    td {{ font-family: Arial, sans-serif; }}
+    .body-content table {{ width: 100% !important; }}
+  </style>
+  <noscript>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  </noscript>
+  <![endif]-->
+  <style type="text/css">
+    /* Print styles - these are only used when printing, safe to keep in style block */
+    @media print {{
+      body {{
+        background: white !important;
+      }}
+      .email-wrapper {{
+        background: white !important;
+      }}
+      .content-container {{
+        box-shadow: none !important;
+      }}
+    }}
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:{COLORS['bg_outer']}; font-family:Arial,Helvetica,sans-serif; -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">{preheader_div}
+
+  <!-- Outer wrapper table -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-wrapper" style="background-color:{COLORS['bg_outer']};">
+    <tr>
+      <td align="center" style="padding:24px 16px;">
+
+        <!-- Main content container - 600px max width -->
+        <!--[if mso]>
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" align="center">
+        <tr>
+        <td>
+        <![endif]-->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="content-container" style="max-width:600px; background-color:{COLORS['bg_content']}; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="padding:28px 32px; background-color:{COLORS['bg_header']}; border-radius:8px 8px 0 0;">
+              <h1 style="margin:0; color:{COLORS['text_header']}; font-size:26px; font-weight:700; font-family:Arial,Helvetica,sans-serif; line-height:1.3;">
+                {_escape_html(title)}
+              </h1>{date_row}
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="body-content" style="padding:28px 32px;">
+              {body_html}
+{UNSUBSCRIBE_FOOTER}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px; background-color:{COLORS['bg_footer']}; border-radius:0 0 8px 8px; text-align:center; border-top:1px solid {COLORS['border']};">
+              <p style="margin:0; color:{COLORS['text_muted']}; font-size:12px; font-family:Arial,Helvetica,sans-serif;">
+                Generated {timestamp} &middot; AI News Aggregator
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!--[if mso]>
+        </td>
+        </tr>
+        </table>
+        <![endif]-->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>'''
+
+
+# =============================================================================
+# Main Entry Point
+# =============================================================================
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Render AI news report markdown to HTML.")
+    """
+    Main entry point for the HTML renderer.
+
+    Accepts markdown input from file or stdin, converts to email-safe HTML,
+    and writes to output file.
+
+    Returns:
+        Exit code (0 for success, 1 for error)
+    """
+    parser = argparse.ArgumentParser(
+        description="Render AI news report markdown to email-safe HTML."
+    )
     parser.add_argument(
         "input",
         nargs="?",
@@ -71,11 +467,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    # Resolve input path
     input_path = Path(args.input).resolve() if args.input else None
     if input_path and not input_path.exists():
         sys.stderr.write(f"error: input file not found: {input_path}\n")
         return 1
 
+    # Resolve output path
     if args.output:
         output_path = Path(args.output).resolve()
     elif input_path:
@@ -84,426 +482,44 @@ def main() -> int:
         sys.stderr.write("error: --output is required when reading from stdin\n")
         return 1
 
+    # Read and parse markdown
     markdown_text = _read_markdown(input_path)
     title = _first_heading(markdown_text) or "AI News Report"
     start_date, end_date = _infer_date_range_from_name(input_path)
 
-    body_html, toc_html = _render_html(markdown_text)
+    # Convert markdown to HTML
+    body_html = _render_markdown_to_html(markdown_text)
 
+    # Extract preheader text BEFORE stripping the H1 and applying styles
+    # This ensures we get clean text from the first paragraph
+    preheader = _extract_preheader(body_html)
+
+    # Remove duplicate H1 since title is shown in header
+    body_html = _strip_first_h1(body_html)
+
+    # Apply inline styles for email compatibility
+    body_html = _apply_inline_styles(body_html)
+
+    # Build metadata
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     date_range = None
     if start_date and end_date:
-        date_range = f"{start_date} → {end_date}"
+        date_range = f"{start_date} \u2192 {end_date}"
 
-    html = f"""<!doctype html>
-<html lang=\"en\" data-theme=\"light\">
-<head>
-  <meta charset=\"utf-8\" />
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-  <title>{title}</title>
-  <style>
-    :root {{
-      --bg: #f7f7f2;
-      --bg-elev: #ffffff;
-      --text: #111827;
-      --muted: #6b7280;
-      --accent: #2563eb;
-      --accent-2: #0f766e;
-      --border: #e5e7eb;
-      --code-bg: #0b1020;
-      --code-text: #e5e7eb;
-      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-    }}
+    # Build complete HTML document
+    html = _build_email_template(
+        title=title,
+        date_range=date_range,
+        body_html=body_html,
+        timestamp=now,
+        preheader=preheader,
+    )
 
-    html[data-theme=\"dark\"] {{
-      --bg: #0b0f16;
-      --bg-elev: #111827;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #60a5fa;
-      --accent-2: #34d399;
-      --border: #1f2937;
-      --code-bg: #0b1020;
-      --code-text: #e5e7eb;
-      --shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-    }}
-
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      font-family: "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-      background: radial-gradient(circle at 20% 10%, rgba(59, 130, 246, 0.12), transparent 45%),
-                  radial-gradient(circle at 90% 5%, rgba(16, 185, 129, 0.12), transparent 40%),
-                  var(--bg);
-      color: var(--text);
-      line-height: 1.7;
-    }}
-
-    .page {{
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 32px 24px 60px;
-    }}
-
-    header.site-header {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px 24px;
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-    }}
-
-    .title-block h1 {{
-      margin: 0;
-      font-size: clamp(1.6rem, 2vw + 1rem, 2.4rem);
-      letter-spacing: -0.02em;
-    }}
-
-    .title-block p {{
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }}
-
-    .toolbar {{
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }}
-
-    .toggle-btn {{
-      appearance: none;
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }}
-
-    .toggle-btn:hover {{
-      transform: translateY(-1px);
-      border-color: var(--accent);
-    }}
-
-    .layout {{
-      display: grid;
-      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-      gap: 28px;
-      margin-top: 28px;
-    }}
-
-    nav.toc {{
-      position: sticky;
-      top: 24px;
-      align-self: start;
-      padding: 18px 18px 8px;
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-    }}
-
-    nav.toc h2 {{
-      margin: 0 0 12px;
-      font-size: 1rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-    }}
-
-    nav.toc ul {{
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 6px;
-      font-size: 0.92rem;
-    }}
-
-    nav.toc a {{
-      color: var(--text);
-      text-decoration: none;
-      padding: 6px 8px;
-      border-radius: 8px;
-      display: block;
-    }}
-
-    nav.toc a:hover {{
-      background: rgba(37, 99, 235, 0.12);
-      color: var(--accent);
-    }}
-
-    main.report {{
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 28px 32px;
-      box-shadow: var(--shadow);
-      min-width: 0;
-    }}
-
-    main.report h1, main.report h2, main.report h3, main.report h4 {{
-      margin-top: 1.8em;
-      margin-bottom: 0.5em;
-      line-height: 1.3;
-      letter-spacing: -0.01em;
-    }}
-
-    main.report h2 {{
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }}
-
-    .collapse-toggle {{
-      margin-left: auto;
-      font-size: 0.8rem;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      padding: 4px 10px;
-      border-radius: 999px;
-      cursor: pointer;
-    }}
-
-    .section {{
-      border-top: 1px solid var(--border);
-      padding-top: 16px;
-    }}
-
-    .section.collapsed .section-content {{
-      display: none;
-    }}
-
-    main.report p {{
-      margin: 0.8em 0;
-    }}
-
-    main.report a {{
-      color: var(--accent);
-      text-decoration: none;
-      border-bottom: 1px solid rgba(37, 99, 235, 0.4);
-      transition: all 0.2s ease;
-    }}
-
-    main.report a:hover {{
-      color: var(--accent-2);
-      border-bottom-color: rgba(15, 118, 110, 0.5);
-    }}
-
-    main.report blockquote {{
-      border-left: 4px solid var(--accent);
-      margin: 16px 0;
-      padding: 8px 16px;
-      background: rgba(37, 99, 235, 0.08);
-      border-radius: 8px;
-    }}
-
-    main.report table {{
-      width: 100%;
-      border-collapse: collapse;
-      margin: 16px 0;
-      font-size: 0.95rem;
-    }}
-
-    main.report th, main.report td {{
-      border: 1px solid var(--border);
-      padding: 8px 10px;
-      text-align: left;
-    }}
-
-    pre {{
-      background: var(--code-bg);
-      color: var(--code-text);
-      padding: 16px;
-      border-radius: 12px;
-      overflow-x: auto;
-      font-size: 0.9rem;
-    }}
-
-    code {{
-      font-family: "SF Mono", "Cascadia Code", Menlo, monospace;
-    }}
-
-    .tok-keyword {{ color: #7dd3fc; font-weight: 600; }}
-    .tok-string {{ color: #fca5a5; }}
-    .tok-number {{ color: #fde68a; }}
-    .tok-comment {{ color: #9ca3af; font-style: italic; }}
-
-    footer.site-footer {{
-      margin-top: 20px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.85rem;
-    }}
-
-    @media (max-width: 960px) {{
-      .layout {{
-        grid-template-columns: 1fr;
-      }}
-
-      nav.toc {{
-        position: static;
-      }}
-    }}
-
-    @media print {{
-      body {{
-        background: white;
-        color: black;
-      }}
-      header.site-header, nav.toc, .collapse-toggle {{
-        display: none !important;
-      }}
-      main.report {{
-        box-shadow: none;
-        border: none;
-        padding: 0;
-      }}
-      .section.collapsed .section-content {{
-        display: block !important;
-      }}
-      a::after {{
-        content: " (" attr(href) ")";
-        font-size: 0.8em;
-        color: #555;
-      }}
-    }}
-  </style>
-</head>
-<body>
-  <div class=\"page\">
-    <header class=\"site-header\">
-      <div class=\"title-block\">
-        <h1>{title}</h1>
-        <p>{date_range or ""}</p>
-      </div>
-      <div class=\"toolbar\">
-        <button class=\"toggle-btn\" id=\"theme-toggle\" type=\"button\">Toggle theme</button>
-      </div>
-    </header>
-
-    <div class=\"layout\">
-      <nav class=\"toc\" aria-label=\"Table of contents\">
-        <h2>Contents</h2>
-        {toc_html or '<p class="toc-empty">No headings found.</p>'}
-      </nav>
-
-      <main class=\"report\" id=\"report\">
-        {body_html}
-      </main>
-    </div>
-
-    <footer class=\"site-footer\">
-      Generated {now} UTC · Self-contained HTML
-    </footer>
-  </div>
-
-  <script>
-    (function () {{
-      const root = document.documentElement;
-      const stored = localStorage.getItem('theme');
-      if (stored) {{
-        root.setAttribute('data-theme', stored);
-      }} else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {{
-        root.setAttribute('data-theme', 'dark');
-      }}
-
-      const toggle = document.getElementById('theme-toggle');
-      if (toggle) {{
-        toggle.addEventListener('click', () => {{
-          const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          root.setAttribute('data-theme', next);
-          localStorage.setItem('theme', next);
-        }});
-      }}
-
-      function escapeHtml(text) {{
-        return text
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-      }}
-
-      function highlight(text) {{
-        const regex = /\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*|#[^\\n]*|\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|`(?:\\\\.|[^`\\\\])*`|\\b\\d+(?:\\.\\d+)?\\b|\\b(class|def|function|return|if|else|for|while|try|catch|import|from|const|let|var|new|async|await|yield|True|False|None|null|true|false)\\b/g;
-        let out = '';
-        let lastIndex = 0;
-        let match;
-        while ((match = regex.exec(text)) !== null) {{
-          out += escapeHtml(text.slice(lastIndex, match.index));
-          const token = match[0];
-          let cls = 'tok-keyword';
-          if (token.startsWith('/*') || token.startsWith('//') || token.startsWith('#')) {{
-            cls = 'tok-comment';
-          }} else if (token.startsWith('"') || token.startsWith('\'') || token.startsWith('`')) {{
-            cls = 'tok-string';
-          }} else if (/^\\d/.test(token)) {{
-            cls = 'tok-number';
-          }}
-          out += `<span class=\"${{cls}}\">${{escapeHtml(token)}}</span>`;
-          lastIndex = regex.lastIndex;
-        }}
-        out += escapeHtml(text.slice(lastIndex));
-        return out;
-      }}
-
-      document.querySelectorAll('pre code').forEach((block) => {{
-        const raw = block.textContent || '';
-        block.innerHTML = highlight(raw);
-      }});
-
-      function makeCollapsibleSections() {{
-        const headings = Array.from(document.querySelectorAll('main.report h2'));
-        headings.forEach((heading) => {{
-          const section = document.createElement('section');
-          section.className = 'section';
-          const content = document.createElement('div');
-          content.className = 'section-content';
-
-          let sibling = heading.nextSibling;
-          while (sibling && !(sibling.nodeType === 1 && sibling.tagName === 'H2')) {{
-            const next = sibling.nextSibling;
-            content.appendChild(sibling);
-            sibling = next;
-          }}
-
-          const parent = heading.parentNode;
-          parent.insertBefore(section, heading);
-          section.appendChild(heading);
-          section.appendChild(content);
-
-          const toggleBtn = document.createElement('button');
-          toggleBtn.className = 'collapse-toggle';
-          toggleBtn.type = 'button';
-          toggleBtn.setAttribute('aria-expanded', 'true');
-          toggleBtn.textContent = 'Collapse';
-          toggleBtn.addEventListener('click', () => {{
-            const collapsed = section.classList.toggle('collapsed');
-            toggleBtn.setAttribute('aria-expanded', String(!collapsed));
-            toggleBtn.textContent = collapsed ? 'Expand' : 'Collapse';
-          }});
-          heading.appendChild(toggleBtn);
-        }});
-      }}
-
-      makeCollapsibleSections();
-    }})();
-  </script>
-</body>
-</html>
-"""
-
+    # Write output
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
 
+    # Print output path to stdout (for scripting)
     sys.stdout.write(str(output_path) + "\n")
     return 0
 

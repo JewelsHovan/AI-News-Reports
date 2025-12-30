@@ -1,0 +1,13 @@
+{
+  "tenant_id": "YOUR_TENANT_ID",
+  "client_id": "YOUR_CLIENT_ID",
+  "sender_email": "your.email@example.com",
+  "subject_template": "AI News Report ({date_range})",
+  "graph_endpoint": "https://graph.microsoft.com/v1.0/me/sendMail",
+  "report_path": "reports/latest.html",
+  "manifest_path": "reports/manifest.jsonl",
+  "auth_flow": "interactive",
+  "scopes": ["Mail.Send"],
+  "keychain_service": "ai-news-graph-api",
+  "keychain_account": "ai-news-graph-api"
+}

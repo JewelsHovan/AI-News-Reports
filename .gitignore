@@ -1,0 +1,33 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+logs/*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Generated reports (keep structure, ignore content)
+# See reports/.gitignore for details
+
+# Sent logs (contain email addresses)
+.claude/skills/ai-news/config/sent_log_*.txt
+
+# Config with secrets (use email_config.example.json as template)
+.claude/skills/ai-news/config/email_config.json

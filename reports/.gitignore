@@ -1,0 +1,9 @@
+# Ignore generated reports
+*.md
+*.html
+manifest.jsonl
+
+# Keep structure files
+!README.md
+!.gitkeep
+!.gitignore

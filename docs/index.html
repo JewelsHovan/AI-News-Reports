@@ -1,94 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subscribe to AI News</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-</head>
-<body>
-  <main class="container">
-    <h1>Subscribe to AI News</h1>
-    <p class="subtitle">Get curated AI news delivered to your inbox every few days. No spam, unsubscribe anytime.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Subscribe to Compass AI News</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+      async
+      defer
+    ></script>
+  </head>
+  <body>
+    <main class="container">
+      <h1>Subscribe to Compass AI News</h1>
+      <p class="subtitle">
+        Get curated AI news delivered to your inbox every few days. No spam,
+        unsubscribe anytime.
+      </p>
 
-    <form id="signup-form">
-      <div class="form-group">
-        <label for="name">Name (optional)</label>
-        <input type="text" id="name" name="name" placeholder="Your name" autocomplete="name">
-      </div>
+      <form id="signup-form">
+        <div class="form-group">
+          <label for="name">Name (optional)</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Your name"
+            autocomplete="name"
+          />
+        </div>
 
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
-      </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            placeholder="you@example.com"
+            autocomplete="email"
+          />
+        </div>
 
-      <div class="turnstile-container">
-        <div class="cf-turnstile"
-             data-sitekey="0x4AAAAAACJzh42Fo2l_kMqP"
-             data-callback="onTurnstileSuccess"
-             data-theme="auto"></div>
-      </div>
+        <div class="turnstile-container">
+          <div
+            class="cf-turnstile"
+            data-sitekey="0x4AAAAAACJzh42Fo2l_kMqP"
+            data-callback="onTurnstileSuccess"
+            data-theme="auto"
+          ></div>
+        </div>
 
-      <button type="submit" id="submit-btn" disabled>Subscribe</button>
-      <p id="error-message" class="error hidden"></p>
-    </form>
-  </main>
+        <button type="submit" id="submit-btn" disabled>Subscribe</button>
+        <p id="error-message" class="error hidden"></p>
+      </form>
+    </main>
 
-  <script>
-    const WORKER_URL = 'https://ai-news-signup.julienh15.workers.dev';
+    <script>
+      const WORKER_URL = "https://ai-news-signup.julienh15.workers.dev";
 
-    const form = document.getElementById('signup-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const errorMessage = document.getElementById('error-message');
-    let turnstileToken = null;
+      const form = document.getElementById("signup-form");
+      const submitBtn = document.getElementById("submit-btn");
+      const errorMessage = document.getElementById("error-message");
+      let turnstileToken = null;
 
-    window.onTurnstileSuccess = function(token) {
-      turnstileToken = token;
-      submitBtn.disabled = false;
-    };
+      window.onTurnstileSuccess = function (token) {
+        turnstileToken = token;
+        submitBtn.disabled = false;
+      };
 
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      errorMessage.classList.add('hidden');
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        errorMessage.classList.add("hidden");
 
-      const email = document.getElementById('email').value.trim();
-      const name = document.getElementById('name').value.trim();
+        const email = document.getElementById("email").value.trim();
+        const name = document.getElementById("name").value.trim();
 
-      if (!email) { showError('Please enter your email.'); return; }
-      if (!turnstileToken) { showError('Please complete verification.'); return; }
+        if (!email) {
+          showError("Please enter your email.");
+          return;
+        }
+        if (!turnstileToken) {
+          showError("Please complete verification.");
+          return;
+        }
 
-      submitBtn.disabled = true;
-      submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+        submitBtn.classList.add("loading");
 
-      try {
-        const res = await fetch(WORKER_URL + '/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name: name || undefined, turnstileToken })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          window.location.href = 'success.html';
-        } else {
-          showError(data.error || 'Something went wrong.');
+        try {
+          const res = await fetch(WORKER_URL + "/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              name: name || undefined,
+              turnstileToken,
+            }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            window.location.href = "success.html";
+          } else {
+            showError(data.error || "Something went wrong.");
+            resetBtn();
+          }
+        } catch (err) {
+          showError("Unable to connect. Check your connection.");
           resetBtn();
         }
-      } catch (err) {
-        showError('Unable to connect. Check your connection.');
-        resetBtn();
+      });
+
+      function showError(msg) {
+        errorMessage.textContent = msg;
+        errorMessage.classList.remove("hidden");
       }
-    });
 
-    function showError(msg) {
-      errorMessage.textContent = msg;
-      errorMessage.classList.remove('hidden');
-    }
-
-    function resetBtn() {
-      submitBtn.classList.remove('loading');
-      if (turnstileToken) submitBtn.disabled = false;
-    }
-  </script>
-</body>
+      function resetBtn() {
+        submitBtn.classList.remove("loading");
+        if (turnstileToken) submitBtn.disabled = false;
+      }
+    </script>
+  </body>
 </html>

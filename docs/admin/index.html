@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - AI News Archive</title>
+    <link rel="stylesheet" href="../styles.css?v=2">
+    <style>
+        /* Admin-specific styles */
+        body {
+            align-items: flex-start;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background 0.15s, opacity 0.15s;
+        }
+
+        .btn-primary {
+            color: #fff;
+            background: var(--color-accent);
+        }
+
+        .btn-primary:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .btn-secondary {
+            color: var(--color-text);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-bg);
+        }
+
+        .btn-danger {
+            color: #fff;
+            background: var(--color-error);
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-small {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Auth screen */
+        .auth-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .auth-container h1 {
+            text-align: center;
+        }
+
+        .auth-subtitle {
+            text-align: center;
+            color: var(--color-text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Reports table */
+        .reports-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+
+        .reports-table th,
+        .reports-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .reports-table th {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .reports-table tbody tr:hover {
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .reports-table tbody tr:hover {
+                background: rgba(59, 130, 246, 0.1);
+            }
+        }
+
+        .report-title {
+            font-weight: 500;
+            color: var(--color-accent);
+            text-decoration: none;
+        }
+
+        .report-title:hover {
+            text-decoration: underline;
+        }
+
+        .report-summary {
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            margin-top: 0.25rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .report-date {
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+
+        .report-items {
+            text-align: center;
+        }
+
+        .report-actions {
+            white-space: nowrap;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+
+        .modal {
+            background: var(--color-surface);
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--color-text-muted);
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: var(--color-text);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="date"],
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            background: var(--color-surface);
+            color: var(--color-text);
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--color-accent);
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px dashed var(--color-border);
+            border-radius: var(--radius);
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="file"]:hover {
+            border-color: var(--color-accent);
+        }
+
+        /* Status messages */
+        .status-message {
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .status-success {
+            background: rgba(22, 163, 74, 0.1);
+            color: var(--color-success);
+            border: 1px solid var(--color-success);
+        }
+
+        .status-error {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--color-error);
+            border: 1px solid var(--color-error);
+        }
+
+        /* Loading state */
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--color-border);
+            border-top-color: var(--color-accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-text-muted);
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .reports-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .reports-table th:nth-child(3),
+            .reports-table td:nth-child(3) {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 1rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-actions {
+                justify-content: stretch;
+            }
+
+            .header-actions .btn {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container" id="app">
+        <!-- Content will be rendered by JavaScript -->
+    </main>
+
+    <script>
+        const API_BASE = 'https://ai-news-signup.julienh15.workers.dev';
+        const TOKEN_KEY = 'admin_token';
+
+        // State
+        let token = localStorage.getItem(TOKEN_KEY);
+        let reports = [];
+        let statusMessage = null;
+
+        // DOM
+        const app = document.getElementById('app');
+
+        // Initialize
+        render();
+
+        // ========== Render Functions ==========
+
+        function render() {
+            if (!token) {
+                renderAuthScreen();
+            } else {
+                renderAdminPanel();
+            }
+        }
+
+        function renderAuthScreen() {
+            app.innerHTML = `
+                <div class="auth-container">
+                    <h1>Admin Login</h1>
+                    <p class="auth-subtitle">Enter your API token to manage the archive</p>
+                    <form id="auth-form">
+                        <div class="form-group">
+                            <label for="token">API Token</label>
+                            <input type="password" id="token" required placeholder="Enter your token">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                    </form>
+                    <a href="../" class="back-link">&larr; Back to Home</a>
+                </div>
+            `;
+
+            document.getElementById('auth-form').addEventListener('submit', handleLogin);
+        }
+
+        function renderAdminPanel() {
+            app.innerHTML = `
+                <div class="header">
+                    <h1>Archive Admin</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" id="upload-btn">Upload Report</button>
+                        <button class="btn btn-secondary" id="logout-btn">Logout</button>
+                    </div>
+                </div>
+                ${statusMessage ? `<div class="status-message ${statusMessage.type}">${escapeHtml(statusMessage.text)}</div>` : ''}
+                <div id="reports-container">
+                    <div class="loading-message"><span class="loading-spinner"></span>Loading reports...</div>
+                </div>
+                <a href="../archive/" class="back-link">&larr; View Public Archive</a>
+            `;
+
+            document.getElementById('upload-btn').addEventListener('click', showUploadModal);
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+            loadReports();
+        }
+
+        function renderReportsTable() {
+            const container = document.getElementById('reports-container');
+
+            if (reports.length === 0) {
+                container.innerHTML = '<div class="empty-message">No reports in the archive yet.</div>';
+                return;
+            }
+
+            const rows = reports.map(report => {
+                const dateRange = formatDateRange(report.date_range_start, report.date_range_end);
+                return `
+                    <tr data-id="${escapeHtml(report.id)}">
+                        <td>
+                            <a href="${API_BASE}/archive/${encodeURIComponent(report.id)}"
+                               class="report-title" target="_blank">
+                                ${escapeHtml(report.title || report.id)}
+                            </a>
+                            ${report.summary ? `<div class="report-summary">${escapeHtml(report.summary)}</div>` : ''}
+                        </td>
+                        <td class="report-date">${dateRange}</td>
+                        <td class="report-items">${report.total_items || '-'}</td>
+                        <td class="report-actions">
+                            <button class="btn btn-secondary btn-small edit-btn" data-id="${escapeHtml(report.id)}">Edit</button>
+                            <button class="btn btn-danger btn-small delete-btn" data-id="${escapeHtml(report.id)}">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <table class="reports-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Date Range</th>
+                            <th>Items</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            `;
+
+            // Attach event listeners
+            container.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', () => showEditModal(btn.dataset.id));
+            });
+            container.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => showDeleteConfirm(btn.dataset.id));
+            });
+        }
+
+        // ========== Modal Functions ==========
+
+        function showModal(title, content, footer) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2>${escapeHtml(title)}</h2>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">${content}</div>
+                    ${footer ? `<div class="modal-footer">${footer}</div>` : ''}
+                </div>
+            `;
+
+            modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        function showUploadModal() {
+            const content = `
+                <form id="upload-form">
+                    <div class="form-group">
+                        <label for="upload-file">HTML Report File</label>
+                        <input type="file" id="upload-file" accept=".html" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="upload-id">Report ID</label>
+                        <input type="text" id="upload-id" required placeholder="e.g., dec_26th_2025_to_dec_29th_2025">
+                    </div>
+                    <div class="form-group">
+                        <label for="upload-title">Title</label>
+                        <input type="text" id="upload-title" required placeholder="e.g., AI News: Dec 26 - Dec 29, 2025">
+                    </div>
+                    <div class="form-group">
+                        <label for="upload-summary">Summary (optional)</label>
+                        <textarea id="upload-summary" placeholder="Brief description of this report..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="upload-date-start">Date Range Start</label>
+                        <input type="date" id="upload-date-start" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="upload-date-end">Date Range End</label>
+                        <input type="date" id="upload-date-end" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="upload-items">Total Items (optional)</label>
+                        <input type="text" id="upload-items" placeholder="e.g., 42">
+                    </div>
+                </form>
+            `;
+
+            const footer = `
+                <button class="btn btn-secondary" id="upload-cancel">Cancel</button>
+                <button class="btn btn-primary" id="upload-submit">Upload</button>
+            `;
+
+            const modal = showModal('Upload Report', content, footer);
+
+            modal.querySelector('#upload-cancel').addEventListener('click', () => modal.remove());
+            modal.querySelector('#upload-submit').addEventListener('click', () => handleUpload(modal));
+        }
+
+        function showEditModal(reportId) {
+            const report = reports.find(r => r.id === reportId);
+            if (!report) return;
+
+            const content = `
+                <form id="edit-form">
+                    <div class="form-group">
+                        <label for="edit-title">Title</label>
+                        <input type="text" id="edit-title" value="${escapeHtml(report.title || '')}" placeholder="Report title">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-summary">Summary</label>
+                        <textarea id="edit-summary" placeholder="Brief description...">${escapeHtml(report.summary || '')}</textarea>
+                    </div>
+                </form>
+            `;
+
+            const footer = `
+                <button class="btn btn-secondary" id="edit-cancel">Cancel</button>
+                <button class="btn btn-primary" id="edit-submit">Save Changes</button>
+            `;
+
+            const modal = showModal('Edit Report', content, footer);
+
+            modal.querySelector('#edit-cancel').addEventListener('click', () => modal.remove());
+            modal.querySelector('#edit-submit').addEventListener('click', () => handleEdit(modal, reportId));
+        }
+
+        function showDeleteConfirm(reportId) {
+            const report = reports.find(r => r.id === reportId);
+            if (!report) return;
+
+            const content = `
+                <p>Are you sure you want to delete this report?</p>
+                <p><strong>${escapeHtml(report.title || report.id)}</strong></p>
+                <p style="color: var(--color-error); font-size: 0.9rem;">This action cannot be undone.</p>
+            `;
+
+            const footer = `
+                <button class="btn btn-secondary" id="delete-cancel">Cancel</button>
+                <button class="btn btn-danger" id="delete-confirm">Delete</button>
+            `;
+
+            const modal = showModal('Delete Report', content, footer);
+
+            modal.querySelector('#delete-cancel').addEventListener('click', () => modal.remove());
+            modal.querySelector('#delete-confirm').addEventListener('click', () => handleDelete(modal, reportId));
+        }
+
+        // ========== API Functions ==========
+
+        async function loadReports() {
+            try {
+                const response = await fetch(`${API_BASE}/archive`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load reports');
+                }
+
+                reports = result.data.reports;
+                // Sort by generated_at descending
+                reports.sort((a, b) => new Date(b.generated_at) - new Date(a.generated_at));
+
+                renderReportsTable();
+            } catch (error) {
+                console.error('Failed to load reports:', error);
+                document.getElementById('reports-container').innerHTML = `
+                    <div class="status-message status-error">Failed to load reports: ${escapeHtml(error.message)}</div>
+                `;
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const inputToken = document.getElementById('token').value.trim();
+
+            if (!inputToken) return;
+
+            // Test the token by making a simple request
+            // We'll just save it and try - if it fails on first action, user will know
+            token = inputToken;
+            localStorage.setItem(TOKEN_KEY, token);
+
+            render();
+        }
+
+        function handleLogout() {
+            token = null;
+            localStorage.removeItem(TOKEN_KEY);
+            statusMessage = null;
+            render();
+        }
+
+        async function handleUpload(modal) {
+            const fileInput = document.getElementById('upload-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const reportId = document.getElementById('upload-id').value.trim();
+            const title = document.getElementById('upload-title').value.trim();
+            const summary = document.getElementById('upload-summary').value.trim();
+            const dateStart = document.getElementById('upload-date-start').value;
+            const dateEnd = document.getElementById('upload-date-end').value;
+            const totalItems = document.getElementById('upload-items').value.trim();
+
+            if (!reportId || !title || !dateStart || !dateEnd) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            const submitBtn = modal.querySelector('#upload-submit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+
+            try {
+                const htmlContent = await file.text();
+
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'text/html',
+                    'X-Report-Id': reportId,
+                    'X-Title': title,
+                    'X-Date-Start': dateStart,
+                    'X-Date-End': dateEnd,
+                    'X-Generated-At': new Date().toISOString(),
+                };
+
+                if (summary) headers['X-Summary'] = summary;
+                if (totalItems) headers['X-Total-Items'] = totalItems;
+
+                const response = await fetch(`${API_BASE}/archive`, {
+                    method: 'POST',
+                    headers,
+                    body: htmlContent,
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Upload failed');
+                }
+
+                modal.remove();
+                statusMessage = { type: 'status-success', text: 'Report uploaded successfully!' };
+                render();
+            } catch (error) {
+                console.error('Upload failed:', error);
+                alert('Upload failed: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload';
+            }
+        }
+
+        async function handleEdit(modal, reportId) {
+            const title = document.getElementById('edit-title').value.trim();
+            const summary = document.getElementById('edit-summary').value.trim();
+
+            const submitBtn = modal.querySelector('#edit-submit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                const response = await fetch(`${API_BASE}/archive/${encodeURIComponent(reportId)}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title, summary }),
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Update failed');
+                }
+
+                modal.remove();
+                statusMessage = { type: 'status-success', text: 'Report updated successfully!' };
+                render();
+            } catch (error) {
+                console.error('Update failed:', error);
+                alert('Update failed: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Changes';
+            }
+        }
+
+        async function handleDelete(modal, reportId) {
+            const confirmBtn = modal.querySelector('#delete-confirm');
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Deleting...';
+
+            try {
+                const response = await fetch(`${API_BASE}/archive/${encodeURIComponent(reportId)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Delete failed');
+                }
+
+                modal.remove();
+                statusMessage = { type: 'status-success', text: 'Report deleted successfully!' };
+                render();
+            } catch (error) {
+                console.error('Delete failed:', error);
+                alert('Delete failed: ' + error.message);
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Delete';
+            }
+        }
+
+        // ========== Utility Functions ==========
+
+        function formatDateRange(start, end) {
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            const startDate = new Date(start + 'T00:00:00');
+            const endDate = new Date(end + 'T00:00:00');
+
+            const startStr = startDate.toLocaleDateString('en-US', options);
+            const endStr = endDate.toLocaleDateString('en-US', options);
+
+            if (startStr === endStr) {
+                return startStr;
+            }
+            return `${startStr} - ${endStr}`;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

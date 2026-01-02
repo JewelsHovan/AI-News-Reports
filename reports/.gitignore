@@ -1,7 +1,10 @@
-# Ignore generated reports
+# Ignore generated reports (they're copied to docs/archive/ for publishing)
 *.md
 *.html
-manifest.jsonl
+
+# Keep manifest for archive index generation
+# (The GitHub Action reads this to build the archive)
+!manifest.jsonl
 
 # Keep structure files
 !README.md

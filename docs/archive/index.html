@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Archive</title>
+    <link rel="stylesheet" href="../styles.css?v=2">
+    <style>
+        /* Archive-specific styles */
+        .container {
+            max-width: 600px;
+        }
+
+        .archive-description {
+            color: var(--color-text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .archive-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 2rem 0;
+        }
+
+        .archive-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            transition: background-color 0.15s;
+        }
+
+        .archive-item:last-child {
+            border-bottom: none;
+        }
+
+        .archive-item:hover {
+            background-color: rgba(37, 99, 235, 0.05);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .archive-item:hover {
+                background-color: rgba(59, 130, 246, 0.1);
+            }
+        }
+
+        .archive-link {
+            color: var(--color-accent);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .archive-link:hover {
+            text-decoration: underline;
+        }
+
+        .archive-meta {
+            color: var(--color-text-muted);
+            font-size: 0.85rem;
+            white-space: nowrap;
+            margin-left: 1rem;
+        }
+
+        @media (max-width: 480px) {
+            .archive-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .archive-meta {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>AI News Archive</h1>
+        <p class="archive-description">Browse past AI news reports</p>
+
+        <ul class="archive-list">
+            <li class="archive-item">
+                <a href="dec_31st_2025_to_jan_1st_2026.html" class="archive-link">Dec 31st, 2025 → Jan 1st, 2026</a>
+                <span class="archive-meta">56 items</span>
+            </li>
+            <li class="archive-item">
+                <a href="dec_30th_2025_to_jan_1st_2026.html" class="archive-link">Dec 30th, 2025 → Jan 1st, 2026</a>
+                <span class="archive-meta">76 items</span>
+            </li>
+            <li class="archive-item">
+                <a href="dec_26th_2025_to_dec_29th_2025.html" class="archive-link">Dec 26th, 2025 → Dec 29th, 2025</a>
+                <span class="archive-meta">55 items</span>
+            </li>
+        </ul>
+
+        <a href="../" class="back-link">&larr; Subscribe to Newsletter</a>
+    </main>
+</body>
+</html>

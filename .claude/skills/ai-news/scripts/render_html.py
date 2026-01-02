@@ -15,9 +15,12 @@ Key constraints for email HTML:
 """
 import argparse
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+from date_utils import format_date_range_display
 
 try:
     import markdown
@@ -305,6 +308,7 @@ def _build_email_template(
     body_html: str,
     timestamp: str,
     preheader: str = "",
+    mode: str = "email",
 ) -> str:
     """
     Build the complete email-safe HTML document.
@@ -318,10 +322,11 @@ def _build_email_template(
 
     Args:
         title: Report title (from H1 heading)
-        date_range: Optional date range string (e.g., "2025-01-01 - 2025-01-07")
+        date_range: Optional date range string (e.g., "Jan 1st, 2025 -> Jan 7th, 2025")
         body_html: Styled HTML body content
         timestamp: ISO timestamp of generation
         preheader: Preview text shown in inbox next to subject line
+        mode: Output mode - "email" includes unsubscribe footer, "web" omits it
 
     Returns:
         Complete HTML document as string
@@ -343,6 +348,9 @@ def _build_email_template(
     {_escape_html(preheader)}
   </div>
   <!--<![endif]-->'''
+
+    # Include unsubscribe footer only in email mode
+    unsubscribe_section = UNSUBSCRIBE_FOOTER if mode == "email" else ""
 
     return f'''<!DOCTYPE html>
 <html lang="en">
@@ -410,7 +418,7 @@ def _build_email_template(
           <tr>
             <td class="body-content" style="padding:28px 32px;">
               {body_html}
-{UNSUBSCRIBE_FOOTER}
+{unsubscribe_section}
             </td>
           </tr>
 
@@ -465,6 +473,12 @@ def main() -> int:
         "--output",
         help="Output HTML path (defaults to input path with .html)",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["email", "web"],
+        default="email",
+        help="Output mode: email (with unsubscribe) or web (for archive)",
+    )
     args = parser.parse_args()
 
     # Resolve input path
@@ -504,7 +518,7 @@ def main() -> int:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     date_range = None
     if start_date and end_date:
-        date_range = f"{start_date} \u2192 {end_date}"
+        date_range = format_date_range_display(start_date, end_date)
 
     # Build complete HTML document
     html = _build_email_template(
@@ -513,11 +527,16 @@ def main() -> int:
         body_html=body_html,
         timestamp=now,
         preheader=preheader,
+        mode=args.mode,
     )
 
     # Write output
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
+
+    # Update latest.html to point to new output
+    latest_path = output_path.parent / "latest.html"
+    shutil.copyfile(output_path, latest_path)
 
     # Print output path to stdout (for scripting)
     sys.stdout.write(str(output_path) + "\n")

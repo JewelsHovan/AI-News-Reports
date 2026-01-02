@@ -1,0 +1,71 @@
+name: Publish Archive
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'reports/manifest.jsonl'
+  workflow_dispatch:  # Allow manual trigger
+
+# Minimal permissions at workflow level
+permissions:
+  contents: read
+
+jobs:
+  publish-archive:
+    runs-on: ubuntu-latest
+    # Scoped write permission only for this job
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        # Pinned to commit SHA for security (v4.2.2)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main  # Always checkout main, even for workflow_dispatch
+          fetch-depth: 0  # Full history for accurate timestamps
+
+      - name: Setup Python
+        # Pinned to commit SHA for security (v5.3.0)
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        # Pinned to commit SHA for security (v4.2.0)
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system markdown
+
+      - name: Generate archive
+        run: |
+          cd .claude/skills/ai-news/scripts
+          python generate_archive_index.py \
+            --manifest ../../../../reports/manifest.jsonl \
+            --output-dir ../../../../docs/archive \
+            --reports-dir ../../../../reports
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [[ -n $(git status docs/archive --porcelain) ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/archive/
+          git commit -m "Update AI News archive
+
+          Automated update from publish-archive workflow.
+
+          Generated with GitHub Actions"
+          git push origin main

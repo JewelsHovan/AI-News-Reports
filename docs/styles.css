@@ -102,6 +102,33 @@ button.loading::after {
 .status-icon.error { color: var(--color-error); }
 .status-icon.info { color: var(--color-accent); }
 
+.archive-link-container {
+  margin: 0 0 1.5rem;
+  text-align: center;
+}
+
+.archive-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  display: inline-block;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.archive-link:hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: var(--color-accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .archive-link:hover {
+    background: rgba(59, 130, 246, 0.15);
+  }
+}
+
 .back-link { display: inline-block; margin-top: 1.5rem; color: var(--color-accent); text-decoration: none; }
 .back-link:hover { text-decoration: underline; }
 

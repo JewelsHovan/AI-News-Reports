@@ -44,4 +44,20 @@ else
   exit 1
 fi
 
+# Phase 3: Commit and push manifest to trigger archive update
+log "Phase 3: Updating archive..."
+if git add reports/manifest.jsonl && \
+   git diff --staged --quiet reports/manifest.jsonl; then
+  log "Phase 3: No manifest changes to commit"
+else
+  DATE_RANGE=$(date +%Y-%m-%d)
+  if git commit -m "Add report for $DATE_RANGE" && \
+     git push origin main >> "$LOG_DIR/git_$TIMESTAMP.log" 2>&1; then
+    log "Phase 3 complete: Manifest pushed, archive will update via GitHub Action"
+  else
+    log "WARNING: Failed to push manifest (archive won't update)"
+    # Don't exit 1 - newsletter was sent successfully
+  fi
+fi
+
 log "Pipeline complete"

@@ -324,6 +324,25 @@ uv run python .claude/skills/ai-news/scripts/render_html.py /path/to/report.md
 The script writes `/path/to/report.html` (same basename) and prints the HTML filepath to stdout. Use the
 `filepath` returned from Phase 5.1 as the input path.
 
+### Phase 5.3: Upload to Cloudflare Archive (Optional)
+
+If the `ADMIN_API_SECRET` environment variable is set, upload the HTML report to the Cloudflare archive:
+
+```bash
+ADMIN_API_SECRET=$ADMIN_API_SECRET uv run python .claude/skills/ai-news/scripts/upload_to_cloudflare.py \
+  /path/to/report.html \
+  --start-date YYYY-MM-DD \
+  --end-date YYYY-MM-DD \
+  --days N \
+  --total-items COUNT
+```
+
+The script uploads the HTML to Cloudflare R2 and updates the KV index. The report will be immediately available at:
+- Archive listing: https://julienh15.github.io/AI-News-Reports/archive/
+- Direct link: https://ai-news-signup.julienh15.workers.dev/archive/{report_id}
+
+**Note:** This step is optional and only runs if `ADMIN_API_SECRET` is available in the environment.
+
 ## Scripts Reference
 
 All scripts are in `.claude/skills/ai-news/scripts/` directory:
@@ -338,6 +357,7 @@ All scripts are in `.claude/skills/ai-news/scripts/` directory:
 | `fetch_the_batch.py` | The Batch | HTML parsing | Expert analysis |
 | `fetch_reddit_ml.py` | Reddit | JSON API | Sentiment analysis |
 | `render_html.py` | Markdown | python-markdown | Self-contained HTML output |
+| `upload_to_cloudflare.py` | Cloudflare | Worker API | Upload to R2 + KV archive |
 
 ## Error Handling
 

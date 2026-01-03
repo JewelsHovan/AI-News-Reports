@@ -1,11 +1,20 @@
-name: Publish Archive
+name: Publish Archive (DISABLED - using Cloudflare archive)
+
+# DISABLED: Archive is now managed via Cloudflare R2/KV
+# See: ai-news-signup/src/archive.ts
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - 'reports/manifest.jsonl'
+#   workflow_dispatch:
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'reports/manifest.jsonl'
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type ENABLE to run this deprecated workflow'
+        required: true
 
 # Minimal permissions at workflow level
 permissions:

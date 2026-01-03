@@ -17,6 +17,11 @@ import sys
 import requests
 from pathlib import Path
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load .env from project root
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 # Configuration
 API_BASE = "https://ai-news-signup.julienh15.workers.dev"
@@ -114,10 +119,10 @@ def upload_report(entry: dict, html_content: str, api_secret: str) -> bool:
         return False
 
 def main():
-    api_secret = os.environ.get("API_SECRET")
+    api_secret = os.environ.get("ADMIN_API_SECRET")
     if not api_secret:
-        print("Error: API_SECRET environment variable required")
-        print("Usage: API_SECRET=your_secret uv run python migrate_to_cloudflare.py")
+        print("Error: ADMIN_API_SECRET environment variable required")
+        print("Set it in .env or run: ADMIN_API_SECRET=secret uv run python migrate_to_cloudflare.py")
         sys.exit(1)
 
     print(f"Loading manifest from {MANIFEST_PATH}")

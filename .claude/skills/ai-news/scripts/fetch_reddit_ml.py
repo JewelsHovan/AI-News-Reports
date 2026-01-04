@@ -83,13 +83,12 @@ def process_post(post_data: dict, subreddit: str) -> dict:
     }
 
 
-def fetch_reddit_ml(days: int = 7, min_score: int = 50) -> list:
+def fetch_reddit_ml(days: int = 7) -> list:
     """
     Fetch AI discussions from Reddit for the past N days.
 
     Args:
         days: Number of days to look back
-        min_score: Minimum score threshold for relevance
 
     Returns:
         List of discussion items
@@ -131,11 +130,6 @@ def fetch_reddit_ml(days: int = 7, min_score: int = 50) -> list:
             created_date = datetime.fromtimestamp(created_utc)
 
             if not (start_date <= created_date <= end_date):
-                continue
-
-            # Check minimum score
-            score = data.get('score', 0)
-            if score < min_score:
                 continue
 
             processed = process_post(post_data, subreddit)
@@ -192,12 +186,10 @@ def main():
     parser = argparse.ArgumentParser(description='Fetch AI discussions from Reddit')
     parser.add_argument('days', type=int, nargs='?', default=7,
                         help='Number of days to look back (default: 7)')
-    parser.add_argument('--min-score', type=int, default=50,
-                        help='Minimum score threshold (default: 50)')
 
     args = parser.parse_args()
 
-    items = fetch_reddit_ml(args.days, args.min_score)
+    items = fetch_reddit_ml(args.days)
     sentiment = analyze_sentiment(items)
 
     output = {
@@ -205,7 +197,6 @@ def main():
         "subreddits": ["MachineLearning", "LocalLLaMA", "artificial", "ClaudeAI", "ClaudeCode", "singularity", "Bard", "PromptEngineering", "ChatGPTPromptGenius", "aipromptprogramming", "PromptDesign"],
         "fetch_date": datetime.now().isoformat(),
         "days_requested": args.days,
-        "min_score_filter": args.min_score,
         "items_found": len(items),
         "community_sentiment": sentiment,
         "items": items

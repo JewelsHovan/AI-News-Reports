@@ -12,7 +12,35 @@ description: >
 # AI News Aggregator
 
 This skill aggregates AI news from 8 authoritative sources and produces a comprehensive, deeply-analyzed report.
-It uses a multi-agent workflow for parallel fetching, verification, sentiment analysis, and expert-informed reporting.
+It uses a **subagent-driven workflow** with parallel exploration and consolidation for richer insights.
+
+## Workflow Architecture
+
+```
+Phase 1: Planning
+    ↓
+Phase 2: Parallel Fetching (8 fetchers)
+    ↓
+Phase 3: Parallel Exploration (4 subagents)
+    ├── Community Explorer (Reddit)
+    ├── Research Explorer (HuggingFace)
+    ├── Industry Explorer (TechCrunch + AI News)
+    └── Expert Explorer (The Batch + Simon Willison)
+    ↓
+Phase 4: Consolidation (3 subagents)
+    ├── Story Synthesizer (top stories)
+    ├── Trend Synthesizer (major trends)
+    └── Implications Synthesizer (actionable insights)
+    ↓
+Phase 5: Report Generation (main orchestrator)
+    ↓
+Phase 5.1-5.3: Persist, Render HTML, Upload
+```
+
+**Why subagents?** With 400+ items from Reddit alone, single-pass analysis produces surface-level insights. Subagents enable:
+- **Deeper exploration**: Each agent focuses on one source type
+- **Richer synthesis**: Consolidation agents see all exploration outputs
+- **Less repetition**: Structured handoffs prevent rehashing the same points
 
 ## Usage
 
@@ -81,7 +109,7 @@ uv run python .claude/skills/ai-news/scripts/fetch_hn_ai.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_ai_news.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_techcrunch.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_the_batch.py <days>
-uv run python .claude/skills/ai-news/scripts/fetch_reddit_ml.py <days> --min-score 20
+uv run python .claude/skills/ai-news/scripts/fetch_reddit_ml.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_simonwillison.py <days>
 ```
 
@@ -91,54 +119,247 @@ uv run python .claude/skills/ai-news/scripts/fetch_simonwillison.py <days>
 - The Batch includes expert attribution
 - Simon Willison script includes `tags_fetched` and merged categories from multiple tag feeds
 
-### Phase 3: Verification & Deduplication
+### Phase 3: Parallel Exploration (4 Subagents)
 
-After collecting results from all sources:
+After fetching, spawn **4 exploration subagents in parallel** using the Task tool. Each analyzes a specific source type for deep insights.
 
-1. **Date Range Validation**: Confirm all items fall within `[start_date, end_date]`
-2. **Deduplication**: Remove duplicate stories across sources
-   - Match by URL or title similarity (>80% match)
-   - Keep the version with most metadata
-3. **Quality Filter**: Remove low-quality or off-topic items
+**IMPORTANT:** Run all 4 Task calls in a single message for parallel execution.
 
-### Phase 4: Deep Analysis & Sentiment Extraction
+#### Agent 1: Community Explorer
+```
+<Task subagent_type="Explore" prompt="
+You are analyzing Reddit community discussions about AI for a news digest.
 
-This is the **critical phase** for producing a valuable report. Perform these analyses:
+INPUT DATA:
+{paste Reddit JSON here}
 
-#### 4.1 Theme Clustering
-Group all items into major themes:
-- **Research & Models**: New architectures, benchmarks, capabilities
-- **Industry & Business**: Funding, acquisitions, enterprise adoption
-- **Tools & Infrastructure**: Developer tools, APIs, frameworks
-- **Policy & Safety**: Regulation, alignment, ethics
-- **Applications**: Real-world deployments, use cases
+ANALYZE AND RETURN:
+1. **Hot Topics** (top 5-7): What topics have highest engagement? Include title, score, subreddit, and why it's generating discussion.
 
-#### 4.2 Trend Identification
-For each major theme, analyze:
-- What's the narrative arc? (emerging, maturing, declining)
-- How many sources cover this topic?
-- What's the engagement level (scores, comments)?
+2. **Major Debates**: What are people arguing about? Identify 2-3 key debates with the different positions being taken.
 
-#### 4.3 Expert Sentiment Extraction
-From **The Batch** (Andrew Ng) articles:
-- Extract key opinions and predictions
-- Note any warnings or concerns raised
-- Identify recommended actions or takeaways
+3. **Community Sentiment**: Overall mood (optimistic/skeptical/mixed). What excites people? What concerns them?
 
-#### 4.4 Community Sentiment Analysis
-From **Reddit** and **Hacker News**:
-- What are the hot topics people are excited about?
-- What criticisms or concerns are being raised?
-- What's the overall mood (optimistic, skeptical, concerned)?
-- Use the `community_sentiment` data from Reddit fetch
+4. **Notable Posts**: 5-10 most significant posts with:
+   - Title and URL
+   - Score and comments
+   - Why it matters (1 sentence)
+   - Key insight or takeaway
 
-#### 4.5 Cross-Source Correlation
-Identify stories that appear across multiple sources:
-- Research paper on HuggingFace + discussed on Reddit
-- Industry news on TechCrunch + expert analysis in The Batch
-- These cross-source items are often the most significant
+5. **Emerging Interests**: What new topics are gaining traction that weren't hot before?
+
+Return as structured analysis, not raw JSON.
+">
+```
+
+#### Agent 2: Research Explorer
+```
+<Task subagent_type="Explore" prompt="
+You are analyzing AI research papers from HuggingFace for a news digest.
+
+INPUT DATA:
+{paste HuggingFace JSON here}
+
+ANALYZE AND RETURN:
+1. **Paper Clusters**: Group papers by theme (e.g., reasoning, multimodal, efficiency, agents). For each cluster:
+   - Theme name
+   - Papers in cluster (title, arxiv URL)
+   - What this research direction is about
+   - Why it matters
+
+2. **Breakthrough Papers**: Top 3-5 most significant papers with:
+   - Title and arxiv URL
+   - TL;DR (2-3 sentences)
+   - Why notable for the field
+   - Practical impact for practitioners
+
+3. **Research Directions**: Which areas are emerging vs maturing vs declining based on paper volume and novelty?
+
+4. **Cross-References**: Any papers that are also being discussed on Reddit or HN?
+
+Return as structured analysis with clear sections.
+">
+```
+
+#### Agent 3: Industry Explorer
+```
+<Task subagent_type="Explore" prompt="
+You are analyzing AI industry news from TechCrunch and AI News for a news digest.
+
+INPUT DATA:
+TechCrunch: {paste TechCrunch JSON here}
+AI News: {paste AI News JSON here}
+
+ANALYZE AND RETURN:
+1. **Funding & Acquisitions**: Any funding rounds, M&A, or investment news. For each:
+   - Company and amount
+   - What it signals about the market
+   - Strategic implications
+
+2. **Product Launches**: Notable AI products or features announced. For each:
+   - Product name and company
+   - What it does
+   - Significance and competitive positioning
+
+3. **Enterprise Adoption**: Companies adopting AI, partnerships, deployments
+   - Who is adopting what
+   - Scale and impact
+
+4. **Policy & Regulation**: Any regulatory news, government actions, policy developments
+   - What happened
+   - Impact on industry
+
+5. **Market Trends**: What patterns emerge from this week's industry news?
+
+Return as structured analysis.
+">
+```
+
+#### Agent 4: Expert Explorer
+```
+<Task subagent_type="Explore" prompt="
+You are analyzing expert insights from The Batch (Andrew Ng) and Simon Willison's blog for a news digest.
+
+INPUT DATA:
+The Batch: {paste The Batch JSON here}
+Simon Willison: {paste Simon Willison JSON here}
+smol.ai: {paste smol.ai JSON here}
+
+ANALYZE AND RETURN:
+1. **Expert Opinions**: Key opinions and predictions from experts. For each:
+   - Source and author
+   - The opinion or prediction
+   - Topic it relates to
+
+2. **Warnings & Concerns**: Any risks, concerns, or cautions raised by experts
+
+3. **Recommended Actions**: Actionable advice from expert sources
+
+4. **Practitioner Insights** (from Simon Willison):
+   - Key posts on prompting, agents, MCP, vibe coding
+   - What practitioners should know
+   - Tools or techniques highlighted
+
+5. **Context Engineering Patterns**: Any insights about prompt engineering, context management, or AI-assisted development workflows
+
+Return as structured analysis.
+">
+```
+
+### Phase 4: Consolidation (3 Subagents)
+
+After exploration agents complete, spawn **3 consolidation subagents in parallel**. Each synthesizes across all exploration outputs.
+
+**IMPORTANT:** Pass ALL 4 exploration outputs to each consolidation agent.
+
+#### Agent A: Story Synthesizer
+```
+<Task subagent_type="Explore" prompt="
+You are synthesizing the TOP STORIES from multiple source analyses.
+
+EXPLORATION OUTPUTS:
+Community Explorer: {paste output}
+Research Explorer: {paste output}
+Industry Explorer: {paste output}
+Expert Explorer: {paste output}
+
+SYNTHESIZE AND RETURN:
+Identify the **top 3-5 stories** of the period. A top story should:
+- Appear across multiple sources OR have exceptional engagement
+- Have significant implications for the AI field
+- Be something readers need to know about
+
+For EACH top story, provide:
+1. **Title**: Clear, descriptive headline
+2. **Sources**: Which sources covered this (Reddit, TechCrunch, The Batch, etc.)
+3. **Why It Matters**: 2-3 sentences on significance
+4. **Expert Take**: What do experts say? (from The Batch, Simon Willison)
+5. **Community Reaction**: What does Reddit/HN think? Sentiment, debates
+6. **Primary Link**: Best URL to learn more
+
+Rank stories by importance. Be selective - only truly significant stories.
+">
+```
+
+#### Agent B: Trend Synthesizer
+```
+<Task subagent_type="Explore" prompt="
+You are identifying MAJOR TRENDS from multiple source analyses.
+
+EXPLORATION OUTPUTS:
+Community Explorer: {paste output}
+Research Explorer: {paste output}
+Industry Explorer: {paste output}
+Expert Explorer: {paste output}
+
+SYNTHESIZE AND RETURN:
+Identify **3 major trends** this period. A trend should:
+- Span multiple stories or sources
+- Represent a meaningful shift or pattern
+- Have implications beyond individual news items
+
+For EACH trend, provide:
+1. **Trend Name**: Clear, specific name (not generic like "AI advances")
+2. **What's Happening**: Detailed explanation (3-4 sentences)
+3. **Narrative Arc**: Is this emerging, maturing, or declining?
+4. **Key Evidence**: 3-5 specific items (papers, posts, articles) that support this trend
+5. **Expert Analysis**: What do experts say about this trend?
+6. **Community Sentiment**: How does the community feel? Hot takes, concerns
+7. **What This Means**: Implications for practitioners, businesses, researchers
+8. **What to Watch**: Future developments to monitor
+
+Each trend should feel distinct - avoid overlap.
+">
+```
+
+#### Agent C: Implications Synthesizer
+```
+<Task subagent_type="Explore" prompt="
+You are synthesizing ACTIONABLE IMPLICATIONS from multiple source analyses.
+
+EXPLORATION OUTPUTS:
+Community Explorer: {paste output}
+Research Explorer: {paste output}
+Industry Explorer: {paste output}
+Expert Explorer: {paste output}
+
+SYNTHESIZE AND RETURN:
+
+### For Practitioners & Engineers
+- **Opportunities**: What new capabilities or tools should they explore?
+- **Challenges**: What problems or risks should they be aware of?
+- **Skills to Develop**: Based on trends, what should they learn?
+- **One Thing to Try This Week**: Single concrete, actionable recommendation
+
+### For Business Leaders
+- **Strategic Implications**: How do these developments affect strategy?
+- **Investment Signals**: What areas are heating up or cooling down?
+- **Competitive Dynamics**: How is the landscape shifting?
+- **Risk Assessment**: What should they be cautious about?
+
+### For Researchers
+- **Research Directions**: What areas need more work?
+- **Papers to Read**: Most important papers from this period
+- **Gaps & Opportunities**: Where is the field underserving?
+- **Collaboration Opportunities**: What interdisciplinary work is emerging?
+
+### The Bigger Picture
+- **Where We Are Now**: Current state of AI based on this period's evidence
+- **Historical Context**: How does this compare to 6 months ago?
+- **Where This Is Heading**: Grounded predictions for coming months
+- **Signals vs Noise**: What's real progress vs hype?
+">
+```
 
 ### Phase 5: Report Generation
+
+Using the **consolidation outputs** from Phase 4, generate the final report. The structured insights from Story Synthesizer, Trend Synthesizer, and Implications Synthesizer provide the foundation - weave them into a cohesive narrative.
+
+**Key principle:** Don't repeat analysis - the subagents have done the deep work. Your job is to:
+1. Assemble the structured insights into the report template
+2. Add transitions and narrative flow
+3. Include links from original fetched items
+4. Ensure consistent voice and avoid repetition across sections
 
 Generate a **comprehensive, detailed report** with these sections:
 
@@ -453,6 +674,20 @@ All scripts are in `.claude/skills/ai-news/scripts/` directory:
 - Ground analysis in specific evidence from the fetched items
 - Compare to historical context when relevant
 - Make the report valuable enough that readers share it
+- Avoid repetitive phrasing - each section should feel fresh and distinct
+
+### Writing Quality
+- **Avoid repetition**: Each trend deep dive should have unique framing and language. Don't repeat the same phrases across sections.
+- **Synthesize, don't summarize**: Connect ideas rather than restating them. If a story appears in multiple sections, reference it briefly rather than re-explaining.
+- **Vary sentence structure**: Mix short punchy sentences with longer analytical ones. Avoid starting multiple paragraphs the same way.
+- **Cut boilerplate**: Remove generic phrases like "This is significant because..." or "What's notable is...". Be direct.
+- **One insight per paragraph**: Each paragraph should advance a single clear point. Don't pad with filler.
+
+**Anti-patterns to avoid:**
+- Repeating the same adjectives (breakthrough, significant, notable) across sections
+- Re-explaining the same story in Top Stories, Trends, and other sections
+- Using the same "What's Happening / Key Evidence / Expert Analysis" framing verbatim for every trend
+- Starting multiple sections with "The" or similar patterns
 
 ### Linking
 - Every claim should link to a source

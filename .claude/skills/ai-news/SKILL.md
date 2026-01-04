@@ -1,8 +1,9 @@
 ---
 name: ai-news
 description: >
-  Aggregate and analyze AI news from 7 authoritative sources including expert newsletters (Andrew Ng's The Batch),
-  research papers (HuggingFace), industry news (TechCrunch, AI News), and community discussions (Reddit, Hacker News).
+  Aggregate and analyze AI news from 8 authoritative sources including expert newsletters (Andrew Ng's The Batch),
+  research papers (HuggingFace), industry news (TechCrunch, AI News), community discussions (Reddit, Hacker News),
+  and context engineering insights (Simon Willison's blog).
   Provides deep trend analysis with expert sentiment and community opinions. This skill should be used when the user
   wants a comprehensive AI news digest, research recent developments, understand community sentiment, or stay updated
   on AI trends. Invoke with `/ai-news <days>` (e.g., `/ai-news 3` for past 3 days).
@@ -10,7 +11,7 @@ description: >
 
 # AI News Aggregator
 
-This skill aggregates AI news from 7 authoritative sources and produces a comprehensive, deeply-analyzed report.
+This skill aggregates AI news from 8 authoritative sources and produces a comprehensive, deeply-analyzed report.
 It uses a multi-agent workflow for parallel fetching, verification, sentiment analysis, and expert-informed reporting.
 
 ## Usage
@@ -49,8 +50,14 @@ It uses a multi-agent workflow for parallel fetching, verification, sentiment an
 ### Community Sources
 | Source | Type | URL | Value |
 |--------|------|-----|-------|
-| Reddit ML | Community Discussion | r/MachineLearning, r/LocalLLaMA | Sentiment, hot takes |
+| Reddit ML | Community Discussion | r/MachineLearning, r/LocalLLaMA, r/ClaudeAI, r/singularity | Sentiment, hot takes |
+| Reddit Prompt Eng | Practitioner Discussion | r/PromptEngineering, r/ChatGPTPromptGenius, r/PromptDesign | Context engineering techniques |
 | Hacker News | Dev Discussion | https://news.ycombinator.com/ | Technical discourse |
+
+### Context Engineering Sources
+| Source | Type | URL | Value |
+|--------|------|-----|-------|
+| Simon Willison | Expert Blog | https://simonwillison.net/ | Prompt engineering, agents, MCP, vibe coding |
 
 ## Multi-Agent Workflow
 
@@ -67,7 +74,7 @@ Execute this workflow in order:
 Spawn agents in parallel using Bash tool, each running one fetcher script:
 
 ```bash
-# Run all 7 fetchers in parallel (from project root)
+# Run all 8 fetchers in parallel (from project root)
 uv run python .claude/skills/ai-news/scripts/fetch_smol_news.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_hf_papers.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_hn_ai.py <days>
@@ -75,12 +82,14 @@ uv run python .claude/skills/ai-news/scripts/fetch_ai_news.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_techcrunch.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_the_batch.py <days>
 uv run python .claude/skills/ai-news/scripts/fetch_reddit_ml.py <days> --min-score 20
+uv run python .claude/skills/ai-news/scripts/fetch_simonwillison.py <days>
 ```
 
 **Key Outputs:**
 - Each script returns JSON with items, metadata, and source info
 - Reddit script includes `community_sentiment` with hot topics and engagement stats
 - The Batch includes expert attribution
+- Simon Willison script includes `tags_fetched` and merged categories from multiple tag feeds
 
 ### Phase 3: Verification & Deduplication
 
@@ -187,21 +196,39 @@ End with a forward-looking statement about what to watch.]
 
 ---
 
+## Connecting the Dots
+
+### Cross-Trend Analysis
+[How do the different trends relate to each other? What's the meta-narrative
+emerging from this week's developments? Connect research advances to industry
+moves to community sentiment. Identify patterns that span multiple stories.
+Write 2-3 substantive paragraphs synthesizing the week.]
+
+### Signals vs Noise
+[What's genuine progress vs hype this week? Be direct about overhyped stories
+and call out underappreciated developments. What should readers pay attention
+to vs ignore?]
+
+---
+
 ## Research Highlights
 
 ### Papers of the Week
 [For each top paper from HuggingFace:]
 
 #### [Paper Title]
-- **Link:** [arxiv/HF link]
-- **TL;DR:** [1-2 sentence summary]
-- **Why Notable:** [What makes this significant]
-- **Upvotes:** [engagement metric]
+- **Arxiv:** [https://arxiv.org/abs/PAPER_ID]
+- **HuggingFace Discussion:** [https://huggingface.co/papers/PAPER_ID]
+- **TL;DR:** [2-3 sentence summary explaining the core contribution]
+- **Why Notable:** [What makes this significant for the field]
+- **Practical Impact:** [How could this affect practitioners?]
 
 [Repeat for top 5-10 papers]
 
-### Research Themes
-[Group papers by theme with brief analysis]
+### Research Themes Analysis
+[2-3 paragraphs grouping papers by theme. Explain what the research community
+is focused on this week and why. Connect to broader research trajectories.
+Identify gaps and opportunities.]
 
 ---
 
@@ -253,19 +280,61 @@ End with a forward-looking statement about what to watch.]
 
 ---
 
+## Context Engineering & Vibe Coding
+
+### Practitioner Insights (Simon Willison)
+[Key posts from simonwillison.net on prompting, agents, MCP, vibe coding]
+- [Post Title](url) - Summary of key insight
+- What practitioners should know
+
+### Prompt Engineering Techniques (Reddit)
+**Hot discussions from r/PromptEngineering, r/ChatGPTPromptGenius, r/PromptDesign:**
+- [Title] - score, subreddit
+- Key technique or pattern shared
+- Community consensus on what works
+
+### Tools & Workflows
+[Notable tools, frameworks, or workflow patterns mentioned across sources]
+- New MCP servers or integrations
+- Cursor/Aider/Claude Code tips
+- Context management strategies
+
+---
+
+## The Bigger Picture
+
+### Where We Are Now
+[Current state of the AI field based on this week's evidence. What phase are
+we in? What's working, what's not? Ground this in specific examples from the news.]
+
+### Historical Context
+[How does this week compare to 6 months ago? 1 year ago? What trajectory are we on?
+Reference specific past developments to show progression or regression.]
+
+### Where This Is Heading
+[Based on this week's signals, where is the field going? What should we expect
+in the coming months? Make specific, grounded predictions based on evidence.]
+
+---
+
 ## What This All Means
 
-### For Researchers
-[Implications and opportunities]
+### For Practitioners & Engineers
+[2-3 paragraphs covering: What skills to develop based on this week's trends.
+What tools to try or adopt. What patterns are emerging in how work gets done.
+Be specific and actionable.]
 
-### For Practitioners/Engineers
-[What to learn, tools to try, skills to develop]
+**One thing to try this week:** [Single concrete recommendation]
 
 ### For Business Leaders
-[Strategic implications, investment signals]
+[2-3 paragraphs covering: Strategic implications of this week's developments.
+Investment signals and competitive dynamics. What decisions should be influenced
+by this news. Risk and opportunity assessment.]
 
-### For the Broader AI Field
-[Where things are heading, big picture trends]
+### For Researchers
+[2-3 paragraphs covering: Research directions worth pursuing based on gaps
+identified. What papers to read. What problems to tackle. Collaboration
+opportunities. Where the field needs more work.]
 
 ---
 
@@ -355,7 +424,8 @@ All scripts are in `.claude/skills/ai-news/scripts/` directory:
 | `fetch_ai_news.py` | AI News | HTML scraping | Enterprise focus |
 | `fetch_techcrunch.py` | TechCrunch | RSS feed | Startup/funding focus |
 | `fetch_the_batch.py` | The Batch | HTML parsing | Expert analysis |
-| `fetch_reddit_ml.py` | Reddit | JSON API | Sentiment analysis |
+| `fetch_reddit_ml.py` | Reddit | JSON API | Sentiment analysis, 11 subreddits |
+| `fetch_simonwillison.py` | Simon Willison | Atom feeds | Context engineering, 7 tag feeds |
 | `render_html.py` | Markdown | python-markdown | Self-contained HTML output |
 | `upload_to_cloudflare.py` | Cloudflare | Worker API | Upload to R2 + KV archive |
 
@@ -368,15 +438,21 @@ All scripts are in `.claude/skills/ai-news/scripts/` directory:
 ## Quality Guidelines
 
 ### Report Length
-- Executive Summary: 300-500 words
-- Each Trend Deep Dive: 400-600 words
-- Total report: 2000-4000 words depending on activity level
+- Executive Summary: 400-600 words
+- Each Trend Deep Dive: 600-800 words
+- Connecting the Dots: 400-600 words
+- The Bigger Picture: 500-700 words
+- What This All Means: 600-800 words (expanded paragraphs, not bullets)
+- Total report: 5000-7000 words
 
 ### Analysis Depth
-- Don't just list items - explain significance
-- Connect dots across sources
-- Provide actionable insights
+- Don't just list items - explain significance and connections
+- Connect dots across sources - how do stories relate?
+- Provide actionable insights with specific recommendations
 - Include both optimistic and critical perspectives
+- Ground analysis in specific evidence from the fetched items
+- Compare to historical context when relevant
+- Make the report valuable enough that readers share it
 
 ### Linking
 - Every claim should link to a source

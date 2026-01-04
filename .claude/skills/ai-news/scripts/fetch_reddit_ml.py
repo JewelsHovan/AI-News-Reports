@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Fetch AI discussions from Reddit r/MachineLearning and r/LocalLLaMA.
-Captures community sentiment, hot discussions, and emerging trends.
+Fetch AI discussions from Reddit AI communities.
+Subreddits: MachineLearning, LocalLLaMA, artificial, ClaudeAI, ClaudeCode, singularity, Bard,
+            PromptEngineering, ChatGPTPromptGenius, aipromptprogramming, PromptDesign
+Captures community sentiment, hot discussions, and emerging trends including context engineering.
 """
 
 import argparse
@@ -101,6 +103,15 @@ def fetch_reddit_ml(days: int = 7, min_score: int = 50) -> list:
         ('MachineLearning', 'top'),
         ('LocalLLaMA', 'hot'),
         ('artificial', 'hot'),
+        ('ClaudeAI', 'hot'),
+        ('ClaudeCode', 'hot'),
+        ('singularity', 'hot'),
+        ('Bard', 'hot'),
+        ('PromptEngineering', 'hot'),
+        ('PromptEngineering', 'top'),
+        ('ChatGPTPromptGenius', 'hot'),
+        ('aipromptprogramming', 'hot'),
+        ('PromptDesign', 'hot'),
     ]
 
     all_posts = {}
@@ -151,7 +162,10 @@ def analyze_sentiment(items: list) -> dict:
     topic_keywords = {}
     keywords = ['gpt', 'llama', 'claude', 'openai', 'anthropic', 'google',
                 'fine-tuning', 'rag', 'agent', 'benchmark', 'open source',
-                'local', 'inference', 'training', 'reasoning']
+                'local', 'inference', 'training', 'reasoning', 'gemini',
+                'bard', 'singularity', 'agi', 'claude code', 'mcp',
+                'prompt engineering', 'context', 'vibe coding', 'cursor',
+                'copilot', 'aider', 'system prompt', 'chain of thought']
 
     for item in items:
         title_lower = item['title'].lower()
@@ -188,7 +202,7 @@ def main():
 
     output = {
         "source": "reddit",
-        "subreddits": ["MachineLearning", "LocalLLaMA", "artificial"],
+        "subreddits": ["MachineLearning", "LocalLLaMA", "artificial", "ClaudeAI", "ClaudeCode", "singularity", "Bard", "PromptEngineering", "ChatGPTPromptGenius", "aipromptprogramming", "PromptDesign"],
         "fetch_date": datetime.now().isoformat(),
         "days_requested": args.days,
         "min_score_filter": args.min_score,

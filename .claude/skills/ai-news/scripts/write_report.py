@@ -53,7 +53,7 @@ def main() -> int:
     timestamp = now.strftime("%Y%m%dT%H%M%SZ")
     generated_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    filename = f"ai-news_{start_date}_to_{end_date}_{timestamp}.md"
+    filename = f"ai-news_{start_date}_to_{end_date}.md"
     base_dir = Path(args.base_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,6 +63,13 @@ def main() -> int:
 
     content = sys.stdin.read()
     content_bytes = content.encode("utf-8")
+
+    # Remove existing report files if they exist (to replace, not duplicate)
+    if report_path.exists():
+        report_path.unlink()
+    html_path = report_path.with_suffix(".html")
+    if html_path.exists():
+        html_path.unlink()
 
     with open(report_path, "wb") as handle:
         bytes_written = handle.write(content_bytes)
@@ -83,7 +90,32 @@ def main() -> int:
         "bytes_written": bytes_written,
     }
 
-    with open(manifest_path, "a", encoding="utf-8") as handle:
+    # Update manifest: filter out existing entries for same date range, then append new
+    existing_entries = []
+    if manifest_path.exists():
+        with open(manifest_path, "r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    # Keep entries that don't match this date range
+                    if not (
+                        entry.get("date_range_start") == start_date
+                        and entry.get("date_range_end") == end_date
+                    ):
+                        existing_entries.append(entry)
+                except json.JSONDecodeError:
+                    # Keep malformed lines as raw strings to preserve data
+                    existing_entries.append(line)
+
+    with open(manifest_path, "w", encoding="utf-8") as handle:
+        for entry in existing_entries:
+            if isinstance(entry, dict):
+                handle.write(json.dumps(entry, ensure_ascii=True) + "\n")
+            else:
+                handle.write(entry + "\n")
         handle.write(json.dumps(manifest_entry, ensure_ascii=True) + "\n")
 
     result = {

@@ -1,2 +1,0 @@
-[console_scripts]
-ai-news = ai_news.__main__:main

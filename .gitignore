@@ -31,3 +31,13 @@ logs/*.log
 
 # Config with secrets (use email_config.example.json as template)
 .claude/skills/ai-news/config/email_config.json
+email_config.json
+
+# Ephemeral planning docs
+.claude-plans/
+
+# Generated report copies (originals are in reports/)
+ai_news_report_*.md
+
+# Sent logs (contain email addresses)
+sent_log_*.txt

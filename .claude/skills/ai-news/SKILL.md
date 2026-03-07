@@ -34,7 +34,7 @@ Phase 4: Consolidation (3 subagents)
     ↓
 Phase 5: Report Generation (main orchestrator)
     ↓
-Phase 5.1-5.3: Persist, Render HTML, Upload
+Phase 5.1-5.4: Persist, Render HTML, Upload, Send Newsletter
 ```
 
 **Why subagents?** With 400+ items from Reddit alone, single-pass analysis produces surface-level insights. Subagents enable:
@@ -614,12 +614,12 @@ uv run python .claude/skills/ai-news/scripts/render_html.py /path/to/report.md
 The script writes `/path/to/report.html` (same basename) and prints the HTML filepath to stdout. Use the
 `filepath` returned from Phase 5.1 as the input path.
 
-### Phase 5.3: Upload to Cloudflare Archive (Optional)
+### Phase 5.3: Upload to Cloudflare Archive
 
-If the `ADMIN_API_SECRET` environment variable is set, upload the HTML report to the Cloudflare archive:
+Upload the HTML report to the Cloudflare archive. The `.env` file contains the required `ADMIN_API_SECRET`:
 
 ```bash
-ADMIN_API_SECRET=$ADMIN_API_SECRET uv run python .claude/skills/ai-news/scripts/upload_to_cloudflare.py \
+source .env && uv run python .claude/skills/ai-news/scripts/upload_to_cloudflare.py \
   /path/to/report.html \
   --start-date YYYY-MM-DD \
   --end-date YYYY-MM-DD \
@@ -631,7 +631,26 @@ The script uploads the HTML to Cloudflare R2 and updates the KV index. The repor
 - Archive listing: https://julienh15.github.io/AI-News-Reports/archive/
 - Direct link: https://ai-news-signup.julienh15.workers.dev/archive/{report_id}
 
-**Note:** This step is optional and only runs if `ADMIN_API_SECRET` is available in the environment.
+### Phase 5.4: Send Newsletter
+
+Send the report to all subscribers via email:
+
+```bash
+source .env && uv run python .claude/skills/ai-news/scripts/send_newsletter.py \
+  --verbose \
+  --api-url "https://ai-news-signup.julienh15.workers.dev/api/subscribers" \
+  --api-secret "$ADMIN_API_SECRET"
+```
+
+The script will:
+- Fetch active subscribers from the Cloudflare Worker API
+- Send personalized emails with unsubscribe links via Microsoft Graph
+- Log sent emails to avoid duplicates
+
+**Options:**
+- `--dry-run` - Preview without sending
+- `--test-email user@example.com` - Send only to a test address
+- `--force` - Ignore sent log and resend to all
 
 ## Scripts Reference
 
@@ -649,6 +668,7 @@ All scripts are in `.claude/skills/ai-news/scripts/` directory:
 | `fetch_simonwillison.py` | Simon Willison | Atom feeds | Context engineering, 7 tag feeds |
 | `render_html.py` | Markdown | python-markdown | Self-contained HTML output |
 | `upload_to_cloudflare.py` | Cloudflare | Worker API | Upload to R2 + KV archive |
+| `send_newsletter.py` | Email | Microsoft Graph | Send to subscribers via API |
 
 ## Error Handling
 

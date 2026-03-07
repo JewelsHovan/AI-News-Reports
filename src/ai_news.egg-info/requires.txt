@@ -1,0 +1,10 @@
+claude-agent-sdk
+markdown
+requests
+python-dotenv
+msal
+
+[dev]
+pytest
+pytest-asyncio
+pytest-mock

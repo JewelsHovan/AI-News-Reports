@@ -41,6 +41,7 @@ recipients.json
 .knowledge/
 .swarm/
 .serena/
+.tdd/
 
 # Generated report copies (originals are in reports/)
 ai_news_report_*.md

@@ -2,7 +2,9 @@
 
 **Priority**: High
 **Complexity**: Medium
-**Status**: In Progress
+**Status**: Completed
+**Completed**: 2026-03-07
+**Files Changed**: 2 new, 4 modified, 28 deleted
 
 ## Description
 
@@ -47,13 +49,13 @@ The legacy `.claude/skills/ai-news/` directory contains ~20 files (scripts, conf
 
 ## Acceptance Criteria
 
-- [ ] `.claude/skills/ai-news/` directory is gone
-- [ ] `run.sh` and `plans/` are gone
-- [ ] No orphaned config files at project root
-- [ ] `.gitignore` is clean and accurate
-- [ ] `uv run python -m ai_news --dry-run` still works
-- [ ] All 88 tests still pass
-- [ ] Repo structure is self-explanatory for someone cloning fresh
+- [x] `.claude/skills/ai-news/` directory is gone
+- [x] `run.sh` and `plans/` are gone
+- [x] No orphaned config files at project root
+- [x] `.gitignore` is clean and accurate
+- [x] `uv run python -m ai_news --dry-run` still works
+- [x] All 88 tests still pass
+- [x] Repo structure is self-explanatory for someone cloning fresh
 
 ## Notes
 

@@ -2,7 +2,9 @@
 
 **Priority**: High
 **Complexity**: Medium
-**Status**: Ready
+**Status**: Completed
+**Completed**: 2026-03-07
+**Files Changed**: 3 new, 1 modified
 **Blocked By**: 001
 
 ## Description
@@ -58,13 +60,13 @@ The current scheduling uses a launchd plist that calls `run_full_pipeline.sh`, w
 
 ## Acceptance Criteria
 
-- [ ] `./scripts/run_pipeline.sh` runs the Agent SDK pipeline end-to-end
-- [ ] `./scripts/setup_schedule.sh` installs launchd schedule with correct paths
-- [ ] `./scripts/uninstall_schedule.sh` cleanly removes the schedule
-- [ ] Works after fresh `git clone` + `uv sync` on any macOS machine
-- [ ] Schedule fires on Mondays and Thursdays at 8 AM
-- [ ] Logs are written to `logs/`
-- [ ] Scripts are portable (no hardcoded `/Users/julien.hovan/...` paths)
+- [x] `./scripts/run_pipeline.sh` runs the Agent SDK pipeline end-to-end
+- [x] `./scripts/setup_schedule.sh` installs launchd schedule with correct paths
+- [x] `./scripts/uninstall_schedule.sh` cleanly removes the schedule
+- [x] Works after fresh `git clone` + `uv sync` on any macOS machine
+- [x] Schedule fires on Mondays and Thursdays at 8 AM
+- [x] Logs are written to `logs/`
+- [x] Scripts are portable (no hardcoded `/Users/julien.hovan/...` paths)
 
 ## Notes
 
@@ -72,3 +74,59 @@ The current scheduling uses a launchd plist that calls `run_full_pipeline.sh`, w
 - Consider adding a `scripts/README.md` with quick-start instructions
 - `uv` must be installed on the target machine — `setup_schedule.sh` should check for it
 - The `.env` file is gitignored, so new machine setup needs env var documentation
+
+## Implementation Plan
+
+### File 1: `scripts/run_pipeline.sh` — Main runner
+- `set -euo pipefail`, resolves repo root via `SCRIPT_DIR/../`
+- Logs to `logs/pipeline_YYYYMMDD_HHMMSS.log` via `exec > >(tee -a)` redirect
+- Sources `.env` using `set -a / set +a` pattern if present
+- Checks `uv` is available before running
+- Runs `uv run python -m ai_news --days ${AI_NEWS_DAYS:-3}`
+- Captures exit code; git commit block present but commented out
+- Exit 0 on success, 1 on failure
+
+### File 2: `scripts/setup_schedule.sh` — Launchd installer
+- Generates plist dynamically using current repo path (no hardcoded paths)
+- Idempotent: `launchctl bootout` before reinstall, `|| true` on bootout failure
+- Cleans up stale old plists (`com.ainews.newsletter.plist`)
+- PATH in plist: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`
+- HOME set explicitly in plist env vars
+- Uses modern `launchctl bootstrap/bootout gui/$(id -u)` (not deprecated load/unload)
+- StartCalendarInterval: array of 2 dicts — Weekday 1 (Monday), Weekday 4 (Thursday), Hour 8, Minute 0
+- Verifies runner script exists, checks uv, chmod +x runner
+
+### File 3: `scripts/uninstall_schedule.sh` — Clean uninstall
+- `launchctl bootout` + remove plist
+- Also cleans up old `com.ainews.newsletter.plist` if present
+- Confirmation message
+
+### Testing
+1. `bash -n` syntax check all 3 scripts
+2. Manual `run_pipeline.sh` invocation, verify log created
+3. `setup_schedule.sh` twice (idempotency)
+4. Verify plist content + `launchctl list | grep ainews`
+5. `uninstall_schedule.sh` + confirm cleanup
+6. chmod +x all scripts before commit
+
+Full plan details: `.claude-plans/ticket-002-scheduling-scripts.md`
+
+## AI Review Summary
+
+**Reviewers**: Pre-Mortem Analyst, Blindspot Detector
+**Confidence**: Medium → High (after mitigations)
+
+### MUST-FIX (both flagged)
+1. **uv PATH detection**: Detect actual `uv` location at setup time, prepend its directory to plist PATH
+2. **Working directory**: Already in plan — confirmed correct (plist WorkingDirectory + explicit cd)
+
+### SHOULD-FIX (critical severity or both flagged)
+1. **ANTHROPIC_API_KEY check**: Fail fast in run_pipeline.sh before invoking pipeline
+2. **Lockfile guard**: Prevent concurrent runs via `mkdir` lockfile + trap cleanup
+3. **Failure notification**: `osascript` desktop notification on pipeline failure
+4. **Log rotation**: Keep last 30 log files, delete older ones in run_pipeline.sh
+
+### EVALUATE (noted, not applied)
+- `--dry-run` env var passthrough (LOW — users can edit script or run manually)
+- Smoke test in setup_schedule.sh (LOW — useful but not critical)
+- Keychain headless documentation (LOW — comment in setup script)

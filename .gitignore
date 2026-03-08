@@ -37,6 +37,10 @@ email_config.json
 # Ephemeral planning docs
 .claude-plans/
 
+# Local state databases
+.knowledge/
+.swarm/
+
 # Generated report copies (originals are in reports/)
 ai_news_report_*.md
 

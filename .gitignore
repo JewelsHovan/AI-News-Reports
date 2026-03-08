@@ -27,12 +27,9 @@ logs/*.log
 # Generated reports (keep structure, ignore content)
 # See reports/.gitignore for details
 
-# Sent logs (contain email addresses)
-.claude/skills/ai-news/config/sent_log_*.txt
-
 # Config with secrets (use email_config.example.json as template)
-.claude/skills/ai-news/config/email_config.json
 email_config.json
+recipients.json
 
 # Ephemeral planning docs
 .claude-plans/
@@ -40,6 +37,7 @@ email_config.json
 # Local state databases
 .knowledge/
 .swarm/
+.serena/
 
 # Generated report copies (originals are in reports/)
 ai_news_report_*.md

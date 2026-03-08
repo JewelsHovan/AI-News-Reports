@@ -2,6 +2,8 @@ name: Publish Archive (DISABLED - using Cloudflare archive)
 
 # DISABLED: Archive is now managed via Cloudflare R2/KV
 # See: ai-news-signup/src/archive.ts
+# NOTE: The legacy script at .claude/skills/ai-news/scripts/generate_archive_index.py
+# was removed in ticket #001. This workflow needs rewriting if ever re-enabled.
 # on:
 #   push:
 #     branches: [main]

@@ -2,7 +2,57 @@
 import json
 import pytest
 from pathlib import Path
-from ai_news.publishing.persist import write_report, PersistResult
+from ai_news.publishing.persist import (
+    write_report,
+    PersistResult,
+    _strip_preamble,
+)
+
+
+def test_strip_preamble_removes_chat_leak():
+    """A conversational preamble before the H1 heading is discarded."""
+    leaked = (
+        "I'll now generate the comprehensive AI News Report using all the "
+        "gathered data.\n\n# AI News Report: 2026-03-16 to 2026-03-18\n\n"
+        "## Executive Summary\nReal content."
+    )
+    out = _strip_preamble(leaked)
+    assert out.startswith("# AI News Report: 2026-03-16 to 2026-03-18")
+    assert "I'll now generate" not in out
+
+
+def test_strip_preamble_leaves_clean_report_untouched():
+    """A report that already starts with the heading is unchanged."""
+    clean = "# AI News Report: 2026-03-16 to 2026-03-18\n\n## Executive Summary\nX."
+    assert _strip_preamble(clean) == clean
+
+
+def test_strip_preamble_preserves_report_without_marker():
+    """Without the marker, content is returned as-is (no destructive trim)."""
+    other = "# Some Other Heading\n\nbody"
+    assert _strip_preamble(other) == other
+
+
+@pytest.mark.asyncio
+async def test_write_report_strips_preamble(tmp_path):
+    """End-to-end: a leaked preamble is stripped before hitting disk."""
+    content = (
+        "Perfect! Here is your report.\n\n"
+        "# AI News Report: 2026-03-14 to 2026-03-16\n\n## Executive Summary\nBody."
+    )
+    result = await write_report(
+        content=content,
+        start_date="2026-03-14",
+        end_date="2026-03-16",
+        days=2,
+        sources_ok=["reddit"],
+        sources_failed=[],
+        total_items=10,
+        base_dir=tmp_path,
+    )
+    written = result.filepath.read_text(encoding="utf-8")
+    assert written.startswith("# AI News Report: 2026-03-14 to 2026-03-16")
+    assert "Perfect!" not in written
 
 
 @pytest.mark.asyncio

@@ -42,6 +42,48 @@ def test_report_template_has_placeholders():
     assert "{generated_at}" in REPORT_TEMPLATE
 
 
+def test_report_template_keeps_original_layout_with_concise_summary():
+    """Verify reports keep the established layout with a concise opening."""
+    assert "## Executive Summary" in REPORT_TEMPLATE
+    assert "120-180 words total" in REPORT_TEMPLATE
+    assert "do not repeat details from later sections" in REPORT_TEMPLATE
+    assert "## Quick Brief" not in REPORT_TEMPLATE
+
+
+def test_orchestrator_prompt_enforces_progressive_disclosure():
+    """Verify the final report prompt discourages long repetitive reports."""
+    assert "4500-6500 words total" in ORCHESTRATOR_PROMPT
+    assert "Use progressive disclosure" in ORCHESTRATOR_PROMPT
+    assert "Keep the same major layout" in ORCHESTRATOR_PROMPT
+    assert "do not rename Executive Summary" in ORCHESTRATOR_PROMPT
+    assert "Preserve depth for engineering" in ORCHESTRATOR_PROMPT
+    assert "Cut repetition before cutting engineering or research substance" in ORCHESTRATOR_PROMPT
+    assert "ANTI-REPETITION RULES" in ORCHESTRATOR_PROMPT
+    assert "Do not include placeholder status sections" in ORCHESTRATOR_PROMPT
+    assert "Full Item List should be omitted" in ORCHESTRATOR_PROMPT
+
+
+def test_orchestrator_prompt_enforces_varied_concrete_openings():
+    """Verify the prompt bans formulaic/dramatic openings and demands a concrete lede."""
+    assert "OPENING & TONE RULES" in ORCHESTRATOR_PROMPT
+    assert "DO NOT ECHO PRIOR REPORTS" in ORCHESTRATOR_PROMPT
+    assert "CALIBRATE THE DRAMA" in ORCHESTRATOR_PROMPT
+    # banned-opener vocabulary is named explicitly
+    assert "inflection point" in ORCHESTRATOR_PROMPT
+    assert "rule of three" in ORCHESTRATOR_PROMPT
+
+
+def test_report_prompt_requires_navigable_source_links():
+    """Verify reports use clickable citations instead of bare source labels."""
+    assert "**Sources:** [Source Name](URL)" in REPORT_TEMPLATE
+    assert "**Primary Link:** [Read more](URL)" in REPORT_TEMPLATE
+    assert "CITATION AND LINK RULES" in ORCHESTRATOR_PROMPT
+    assert "Use clickable Markdown links for all sources" in ORCHESTRATOR_PROMPT
+    assert "Do not use bare source labels" in ORCHESTRATOR_PROMPT
+    assert "Community items must link to the specific Reddit or Hacker News discussion" in ORCHESTRATOR_PROMPT
+    assert "do not invent links" in ORCHESTRATOR_PROMPT
+
+
 def test_report_template_can_be_formatted():
     """Verify the report template can be formatted without errors."""
     formatted = REPORT_TEMPLATE.format(

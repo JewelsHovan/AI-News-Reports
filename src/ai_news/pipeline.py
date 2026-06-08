@@ -78,6 +78,7 @@ async def analyze_and_generate(
     end_date: str,
     days: int,
     max_budget_usd: float = 5.0,
+    reports_dir=None,
 ) -> str:
     """Run the full analysis pipeline: explore -> consolidate -> generate."""
     from ai_news.analysis.agents import (
@@ -105,6 +106,7 @@ async def analyze_and_generate(
         end_date=end_date,
         days=days,
         max_budget_usd=max_budget_usd * 0.3,
+        reports_dir=reports_dir,
     )
 
     return report
@@ -259,13 +261,24 @@ async def run_pipeline(
         )
 
     # Phase 2-4: Analyze (Agent SDK)
-    report_md = await analyze_and_generate(
-        fetch_results=fetch_results,
-        start_date=start_date,
-        end_date=end_date,
-        days=days,
-        max_budget_usd=config.max_budget_usd,
-    )
+    try:
+        report_md = await analyze_and_generate(
+            fetch_results=fetch_results,
+            start_date=start_date,
+            end_date=end_date,
+            days=days,
+            max_budget_usd=config.max_budget_usd,
+            reports_dir=config.reports_dir,
+        )
+    except RuntimeError as exc:
+        logger.error("Analysis pipeline aborted: %s", exc)
+        return PipelineResult(
+            success=False,
+            sources_ok=sources_ok,
+            sources_failed=sources_failed,
+            total_items=total_items,
+            errors=[f"Analysis failed: {exc}"],
+        )
 
     # Phase 5: Publish
     if skip_upload:

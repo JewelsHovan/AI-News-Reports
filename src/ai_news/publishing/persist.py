@@ -18,6 +18,25 @@ class PersistResult:
     manifest_updated: bool
 
 
+REPORT_HEADING = "# AI News Report:"
+
+
+def _strip_preamble(content: str) -> str:
+    """Drop any conversational preamble before the report's H1 heading.
+
+    The orchestrator agent is instructed to emit only the report, but has
+    occasionally leaked a chat preamble (e.g. "I'll now generate the
+    comprehensive AI News Report...") ahead of the real "# AI News Report:"
+    heading. If that heading is present, discard everything before it. If it
+    is absent, return the content unchanged rather than risk destroying a
+    report that simply uses a different heading.
+    """
+    idx = content.find(REPORT_HEADING)
+    if idx > 0:
+        return content[idx:]
+    return content
+
+
 def _parse_date(date_str: str, label: str) -> str:
     """Validate that a date string is in YYYY-MM-DD format."""
     try:
@@ -40,6 +59,8 @@ def _write_report_sync(
     """Synchronous implementation of report writing logic."""
     start_date = _parse_date(start_date, "start_date")
     end_date = _parse_date(end_date, "end_date")
+
+    content = _strip_preamble(content)
 
     now = datetime.now(timezone.utc)
     generated_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")

@@ -10,6 +10,7 @@ Dry run by default; pass --apply to PATCH the live archive.
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -24,6 +25,10 @@ DEFAULT_API_BASE = "https://ai-news-signup.julienh15.workers.dev"
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--apply", action="store_true", help="PATCH the live archive (default: dry run)")
+    parser.add_argument("--only-missing", action="store_true", help="Skip entries that already have a headline")
+    # Each PATCH rewrites the whole KV index; KV reads can briefly lag writes, so
+    # back-to-back PATCHes can overwrite each other. Space them out.
+    parser.add_argument("--delay", type=float, default=3.0, help="Seconds between PATCHes (default: 3)")
     args = parser.parse_args()
 
     api_base = os.environ.get("AI_NEWS_API_BASE_URL", DEFAULT_API_BASE).rstrip("/")
@@ -37,6 +42,9 @@ def main() -> int:
     reports = resp.json()["data"]["reports"]
 
     updated = skipped = failed = 0
+    if args.only_missing:
+        reports = [r for r in reports if not r.get("headline")]
+
     for report in reports:
         start, end = report["date_range_start"], report["date_range_end"]
         md_path = REPO_ROOT / "reports" / f"ai-news_{start}_to_{end}.md"
@@ -62,6 +70,7 @@ def main() -> int:
             headers={"Authorization": f"Bearer {secret}"},
             timeout=30,
         )
+        time.sleep(args.delay)
         if patch.ok:
             updated += 1
         else:

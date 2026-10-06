@@ -165,7 +165,8 @@ h1.big { font-family: var(--serif); font-size: 46px; line-height: 1.08; letter-s
 .latest-card h3 a { text-decoration: none; }
 .latest-card h3 a:hover { color: var(--accent); }
 .latest-card .summary { margin: 0; color: var(--muted); font-size: 14.5px; }
-.latest-card ol { padding-left: 18px; margin: 14px 0 0; }
+.latest-card ul { padding-left: 18px; margin: 4px 0 0; }
+.latest-card .also { margin: 14px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .latest-card li { margin: 6px 0; font-size: 14.5px; }
 .latest-card .linkbtn { display: inline-block; margin-top: 16px; }
 

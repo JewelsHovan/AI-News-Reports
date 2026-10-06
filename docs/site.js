@@ -137,12 +137,18 @@
     return archivePromise;
   }
 
+  // Top stories minus the one already shown as the headline.
+  function otherStories(report) {
+    const headline = String(report.headline || '').trim();
+    return listOf(report.top_stories).filter((s) => String(s).trim() !== headline);
+  }
+
   // Card used on the home "Recent issues" grid and the archive (cards view).
   function issueCardHtml(report, opts) {
     opts = opts || {};
     const q = opts.query || '';
     const hasHeadline = !!(report.headline && String(report.headline).trim());
-    const stories = listOf(report.top_stories).slice(0, 3);
+    const stories = otherStories(report).slice(0, 3);
     const tags = listOf(report.tags);
     const dateLine = hasHeadline ? rangeOf(report) : 'Published ' + formatDay(report.generated_at || report.date_range_end);
     let body = '';
@@ -286,7 +292,7 @@
   window.Brief = {
     NAME, BYLINE, API_BASE, ROOT,
     escapeHtml, highlight, formatDateRange, formatDay, monthLabel, parseDay,
-    rangeOf, headingOf, itemsLabel, listOf, issueHref, reportUrl,
+    rangeOf, headingOf, itemsLabel, listOf, otherStories, issueHref, reportUrl,
     compareReports, dedupe, fetchArchive, issueCardHtml, mountSignup,
   };
 })();

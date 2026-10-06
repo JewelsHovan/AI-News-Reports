@@ -109,15 +109,15 @@ export async function sendVerificationEmail(
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">AI News Weekly</h1>
+  <div style="background: #c2410c; padding: 30px; border-radius: 10px 10px 0 0;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Julien&#39;s AI Brief</h1>
   </div>
   <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
     <h2 style="margin-top: 0;">Confirm your subscription</h2>
     <p>Hi${recipientName ? ` ${recipientName}` : ''},</p>
-    <p>Thanks for subscribing to AI News Weekly! Click below to confirm:</p>
+    <p>Thanks for subscribing to Julien&#39;s AI Brief! Click below to confirm:</p>
     <p style="text-align: center; margin: 30px 0;">
-      <a href="${verifyUrl}" style="background: #667eea; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Confirm Subscription</a>
+      <a href="${verifyUrl}" style="background: #c2410c; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Confirm Subscription</a>
     </p>
     <p style="color: #6b7280; font-size: 14px;">This link expires in 24 hours.</p>
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
@@ -129,7 +129,7 @@ export async function sendVerificationEmail(
   return sendEmail(config, {
     to: recipientEmail,
     toName: recipientName || undefined,
-    subject: 'Confirm your AI News Weekly subscription',
+    subject: "Confirm your Julien's AI Brief subscription",
     htmlBody,
   });
 }

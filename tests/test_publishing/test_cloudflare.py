@@ -123,3 +123,57 @@ async def test_upload_request_exception(tmp_path):
 
     assert not result.success
     assert "Request failed" in result.error
+
+
+@pytest.mark.asyncio
+async def test_upload_sends_listing_as_base64_meta_header(tmp_path):
+    """Listing metadata travels as base64 JSON so non-Latin-1 text survives headers."""
+    import base64
+    import json
+
+    html_path = tmp_path / "report.html"
+    html_path.write_text("<html><body>Test</body></html>")
+    listing = {"headline": "Agents — 35% reliable", "tldr": "“Quoted” text.", "top_stories": ["A"], "tags": ["Agents"]}
+
+    mock_response = MagicMock()
+    mock_response.ok = True
+
+    with patch("ai_news.publishing.cloudflare.requests.post", return_value=mock_response) as mock_post:
+        result = await upload_report(
+            html_path=html_path,
+            start_date="2026-10-01",
+            end_date="2026-10-06",
+            days=5,
+            total_items=42,
+            api_secret="test-secret",
+            listing=listing,
+        )
+
+    assert result.success
+    headers = mock_post.call_args.kwargs["headers"]
+    assert json.loads(base64.b64decode(headers["X-Meta"]).decode("utf-8")) == listing
+    assert headers["X-Title"] == "Julien's AI Brief: Oct 01 - Oct 06, 2026"
+    # Every header value must be Latin-1 encodable for http.client.
+    for value in headers.values():
+        value.encode("latin-1")
+
+
+@pytest.mark.asyncio
+async def test_upload_without_listing_omits_meta_header(tmp_path):
+    html_path = tmp_path / "report.html"
+    html_path.write_text("<html><body>Test</body></html>")
+
+    mock_response = MagicMock()
+    mock_response.ok = True
+
+    with patch("ai_news.publishing.cloudflare.requests.post", return_value=mock_response) as mock_post:
+        await upload_report(
+            html_path=html_path,
+            start_date="2026-10-01",
+            end_date="2026-10-06",
+            days=5,
+            total_items=42,
+            api_secret="test-secret",
+        )
+
+    assert "X-Meta" not in mock_post.call_args.kwargs["headers"]

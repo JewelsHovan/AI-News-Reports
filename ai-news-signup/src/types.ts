@@ -48,12 +48,19 @@ export interface ReportMeta {
   date_range_start: string;      // "2025-12-31"
   date_range_end: string;        // "2026-01-02"
   generated_at: string;          // ISO timestamp
-  title: string;                 // "AI News Digest: Dec 31 - Jan 2"
+  title: string;                 // "Julien's AI Brief: Dec 31 - Jan 2"
   summary: string;               // Brief description
   r2_key: string;                // "reports/2026-01-02_20260102T081220Z.html"
   days: number;
   total_items: number;
+  // Listing fields for archive cards (absent on older entries)
+  headline?: string;             // Top story #1
+  tldr?: string;                 // First sentences of the executive summary
+  top_stories?: string[];        // Up to 5 top-story titles
+  tags?: string[];               // Up to 3 topic tags, e.g. "Agents"
 }
+
+export type ReportListing = Pick<ReportMeta, 'headline' | 'tldr' | 'top_stories' | 'tags'>;
 
 export interface ArchiveIndex {
   reports: ReportMeta[];

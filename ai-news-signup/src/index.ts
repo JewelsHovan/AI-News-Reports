@@ -13,7 +13,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use('*', cors({
   origin: ['https://julienhovan.com', 'https://jewelshovan.github.io', 'https://julienh15.github.io', 'http://localhost:3000', 'http://localhost:8080'],
   allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Report-Id', 'X-Date-Start', 'X-Date-End', 'X-Generated-At', 'X-Title', 'X-Summary', 'X-Days', 'X-Total-Items'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Report-Id', 'X-Date-Start', 'X-Date-End', 'X-Generated-At', 'X-Title', 'X-Summary', 'X-Days', 'X-Total-Items', 'X-Meta'],
   maxAge: 86400,
 }));
 

@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ai_news.publishing.branding import NEWSLETTER_NAME
 from ai_news.utils.dates import format_date_range_display
 
 try:
@@ -132,7 +133,7 @@ INLINE_STYLES = {
 UNSUBSCRIBE_FOOTER = '''
               <!-- Unsubscribe Footer -->
               <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 12px; color: #666666; font-family: Arial, Helvetica, sans-serif;">
-                <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px;">You received this because you subscribed to AI News.</p>
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px;">You received this because you subscribed to Julien&#39;s AI Brief. &middot; <a href="https://julienhovan.com/AI-News-Reports/archive/" style="color: #666666; text-decoration: underline;">Past issues</a></p>
                 <p style="margin: 0; color: #666666; font-size: 12px;"><a href="{UNSUBSCRIBE_LINK}" style="color: #666666; text-decoration: underline;">Unsubscribe</a></p>
               </div>
 '''
@@ -379,7 +380,7 @@ def _build_email_template(
           <tr>
             <td style="padding:20px 32px; background-color:{COLORS['bg_footer']}; border-radius:0 0 8px 8px; text-align:center; border-top:1px solid {COLORS['border']};">
               <p style="margin:0; color:{COLORS['text_muted']}; font-size:12px; font-family:Arial,Helvetica,sans-serif;">
-                Generated {timestamp} &middot; AI News Aggregator
+                Generated {timestamp} &middot; Julien&#39;s AI Brief
               </p>
             </td>
           </tr>
@@ -419,7 +420,10 @@ def _render_sync(
 
     # Read and parse markdown
     markdown_text = markdown_path.read_text(encoding="utf-8")
-    title = _first_heading(markdown_text) or "AI News Report"
+    # The generator's "# AI News Report: <dates>" heading is a parsing marker;
+    # the email header shows the newsletter name (dates render separately).
+    heading = _first_heading(markdown_text)
+    title = NEWSLETTER_NAME if not heading or heading.startswith("AI News Report") else heading
     start_date, end_date = _infer_date_range_from_name(markdown_path)
 
     # Convert markdown to HTML

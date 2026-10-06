@@ -1,11 +1,15 @@
 """Upload HTML report to Cloudflare R2 + KV archive."""
 
 import asyncio
+import base64
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+
+from ai_news.publishing.branding import NEWSLETTER_NAME
 
 
 @dataclass
@@ -28,7 +32,13 @@ def _generate_default_title(start_date: str, end_date: str) -> str:
     end = datetime.strptime(end_date, "%Y-%m-%d")
     start_str = start.strftime("%b %d")
     end_str = end.strftime("%b %d, %Y")
-    return f"AI News Digest: {start_str} - {end_str}"
+    return f"{NEWSLETTER_NAME}: {start_str} - {end_str}"
+
+
+def _encode_listing(listing: dict) -> str:
+    """Encode listing metadata for the X-Meta header (base64 UTF-8 JSON, since
+    header values must be Latin-1 and headlines often contain em-dashes)."""
+    return base64.b64encode(json.dumps(listing, ensure_ascii=False).encode("utf-8")).decode("ascii")
 
 
 def _upload_sync(
@@ -41,6 +51,7 @@ def _upload_sync(
     title: str | None,
     summary: str | None,
     api_base: str,
+    listing: dict | None = None,
 ) -> UploadResult:
     """Synchronous implementation of the upload logic."""
     if not html_path.exists():
@@ -73,6 +84,7 @@ def _upload_sync(
         "X-Summary": summary,
         "X-Days": str(days),
         "X-Total-Items": str(total_items),
+        **({"X-Meta": _encode_listing(listing)} if listing else {}),
         "Content-Type": "text/html",
     }
 
@@ -109,6 +121,7 @@ async def upload_report(
     title: str | None = None,
     summary: str | None = None,
     api_base: str = "https://ai-news-signup.julienh15.workers.dev",
+    listing: dict | None = None,
 ) -> UploadResult:
     """Upload HTML report to Cloudflare R2 + KV archive.
 
@@ -122,6 +135,7 @@ async def upload_report(
         title: Custom title. Defaults to auto-generated from dates.
         summary: Brief summary. Defaults to auto-generated.
         api_base: Base URL of the Cloudflare Worker API.
+        listing: Archive-card metadata (headline, tldr, top_stories, tags).
 
     Returns:
         UploadResult indicating success/failure with report ID and URL on success.
@@ -137,4 +151,5 @@ async def upload_report(
         title,
         summary,
         api_base,
+        listing,
     )

@@ -105,4 +105,4 @@ async def test_render_html_default_title(tmp_path):
     md_path.write_text("Some content without a heading.")
 
     result = await render_html(md_path)
-    assert result.title == "AI News Report"
+    assert result.title == "Julien's AI Brief"

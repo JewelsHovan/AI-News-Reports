@@ -10,18 +10,19 @@ const successHtml = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Subscription Confirmed</title>
   <style>
-    body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea, #764ba2); }
-    .card { background: white; padding: 40px; border-radius: 16px; text-align: center; max-width: 400px; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
-    .icon { width: 60px; height: 60px; background: #10b981; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; color: white; font-size: 30px; }
-    h1 { margin: 0 0 10px; color: #1f2937; }
-    p { color: #6b7280; }
+    body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f7f5f0; }
+    .card { background: white; padding: 40px; border-radius: 16px; text-align: center; max-width: 400px; border: 1px solid #e4e0d6; box-shadow: 0 10px 40px rgba(0,0,0,0.06); }
+    .icon { width: 60px; height: 60px; background: #c2410c; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; color: white; font-size: 30px; }
+    h1 { margin: 0 0 10px; color: #1b1a17; font-family: 'Iowan Old Style', Palatino, Georgia, serif; }
+    p { color: #6b675f; } a { color: #c2410c; font-weight: 600; text-decoration: none; }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="icon">&#10003;</div>
     <h1>You're Subscribed!</h1>
-    <p>Welcome to AI News Weekly. You'll receive our next issue soon.</p>
+    <p>Welcome to Julien's AI Brief. The next issue arrives Monday or Thursday morning.</p>
+    <p><a href="https://julienhovan.com/AI-News-Reports/issue.html">Read the latest issue &rarr;</a></p>
   </div>
 </body>
 </html>`;
@@ -33,11 +34,11 @@ const errorHtml = (msg: string) => `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verification Failed</title>
   <style>
-    body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea, #764ba2); }
-    .card { background: white; padding: 40px; border-radius: 16px; text-align: center; max-width: 400px; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
+    body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f7f5f0; }
+    .card { background: white; padding: 40px; border-radius: 16px; text-align: center; max-width: 400px; border: 1px solid #e4e0d6; box-shadow: 0 10px 40px rgba(0,0,0,0.06); }
     .icon { width: 60px; height: 60px; background: #ef4444; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; color: white; font-size: 30px; }
-    h1 { margin: 0 0 10px; color: #1f2937; }
-    p { color: #6b7280; }
+    h1 { margin: 0 0 10px; color: #1b1a17; font-family: 'Iowan Old Style', Palatino, Georgia, serif; }
+    p { color: #6b675f; } a { color: #c2410c; font-weight: 600; text-decoration: none; }
   </style>
 </head>
 <body>

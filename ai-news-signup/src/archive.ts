@@ -1,9 +1,62 @@
 import { Hono } from 'hono';
-import { Env, ApiResponse, ArchiveIndex, ReportMeta } from './types';
+import { Env, ApiResponse, ArchiveIndex, ReportMeta, ReportListing } from './types';
 
 export const archiveRoute = new Hono<{ Bindings: Env }>();
 
 const ARCHIVE_INDEX_KEY = 'archive-index';
+
+const MAX_TEXT = 500;
+const MAX_STORIES = 5;
+const MAX_TAGS = 3;
+
+function cleanText(value: unknown, max = MAX_TEXT): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  return text ? text.slice(0, max) : undefined;
+}
+
+function cleanList(value: unknown, maxItems: number, maxLen: number): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items = value
+    .map((v) => cleanText(v, maxLen))
+    .filter((v): v is string => !!v)
+    .slice(0, maxItems);
+  return items.length ? items : undefined;
+}
+
+/**
+ * Validate listing fields from untrusted input, dropping anything malformed.
+ * Only keys that are present and valid are returned.
+ */
+function parseListing(raw: unknown): ReportListing {
+  if (!raw || typeof raw !== 'object') return {};
+  const r = raw as Record<string, unknown>;
+  const listing: ReportListing = {
+    headline: cleanText(r.headline, 200),
+    tldr: cleanText(r.tldr),
+    top_stories: cleanList(r.top_stories, MAX_STORIES, 200),
+    tags: cleanList(r.tags, MAX_TAGS, 40),
+  };
+  for (const key of Object.keys(listing) as (keyof ReportListing)[]) {
+    if (listing[key] === undefined) delete listing[key];
+  }
+  return listing;
+}
+
+/**
+ * Decode the optional X-Meta header: base64-encoded UTF-8 JSON (headers can't
+ * carry raw non-Latin-1 text such as em-dashes).
+ */
+function decodeMetaHeader(header: string | undefined): ReportListing {
+  if (!header) return {};
+  try {
+    const bytes = Uint8Array.from(atob(header), (ch) => ch.charCodeAt(0));
+    return parseListing(JSON.parse(new TextDecoder().decode(bytes)));
+  } catch (error) {
+    console.warn('Ignoring malformed X-Meta header:', error);
+    return {};
+  }
+}
 
 /**
  * Verify admin authorization via Bearer token
@@ -116,6 +169,7 @@ archiveRoute.post('/', async (c) => {
     const summary = c.req.header('X-Summary');
     const days = c.req.header('X-Days');
     const totalItems = c.req.header('X-Total-Items');
+    const listing = decodeMetaHeader(c.req.header('X-Meta'));
 
     // Validate required headers
     if (!reportId || !dateStart || !dateEnd || !generatedAt || !title || !summary || !days || !totalItems) {
@@ -148,6 +202,7 @@ archiveRoute.post('/', async (c) => {
       r2_key: r2Key,
       days: parseInt(days, 10),
       total_items: parseInt(totalItems, 10),
+      ...listing,
     };
 
     // Upload HTML to R2
@@ -199,12 +254,13 @@ archiveRoute.patch('/:id', async (c) => {
   const id = c.req.param('id');
 
   try {
-    const body = await c.req.json<{ title?: string; summary?: string }>();
+    const body = await c.req.json<{ title?: string; summary?: string } & Record<string, unknown>>();
+    const listing = parseListing(body);
 
-    if (!body.title && !body.summary) {
+    if (!body.title && !body.summary && Object.keys(listing).length === 0) {
       return c.json<ApiResponse>({
         success: false,
-        error: 'Request body must contain at least one of: title, summary',
+        error: 'Request body must contain at least one of: title, summary, headline, tldr, top_stories, tags',
       }, 400);
     }
 
@@ -225,6 +281,7 @@ archiveRoute.patch('/:id', async (c) => {
     if (body.summary) {
       index.reports[reportIndex].summary = body.summary;
     }
+    Object.assign(index.reports[reportIndex], listing);
 
     await saveArchiveIndex(c.env.ARCHIVE_KV, index);
 

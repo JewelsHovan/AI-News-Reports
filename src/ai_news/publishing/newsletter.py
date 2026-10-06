@@ -20,6 +20,8 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import urlparse
 
+from ai_news.publishing.branding import NEWSLETTER_NAME
+
 try:
     import msal
 except ImportError:  # pragma: no cover - runtime guard
@@ -229,7 +231,7 @@ def _read_manifest_tail(path: Path) -> dict[str, Any] | None:
 
 def _build_subject(template: str, context: dict[str, str]) -> str:
     rendered = template.format_map(_SafeDict(context)).strip()
-    return rendered or context.get("title", "AI News Report")
+    return rendered or context.get("title", NEWSLETTER_NAME)
 
 
 # =============================================================================
@@ -511,8 +513,8 @@ def _send_newsletter_sync(
     if start_date and end_date:
         date_range = f"{start_date} to {end_date}"
 
-    title = "AI News Report"
-    subject_template = config.get("subject_template", "AI News Report")
+    title = NEWSLETTER_NAME
+    subject_template = config.get("subject_template", f"{NEWSLETTER_NAME}: {{date_range}}")
     subject = _build_subject(
         subject_template,
         {

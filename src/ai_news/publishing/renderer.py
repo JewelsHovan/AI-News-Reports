@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ai_news.publishing.branding import NEWSLETTER_NAME
+from ai_news.publishing.listing import extract_issue_title, strip_issue_title
 from ai_news.utils.dates import format_date_range_display
 
 try:
@@ -275,6 +276,7 @@ def _build_email_template(
     timestamp: str,
     preheader: str = "",
     mode: str = "email",
+    eyebrow: str | None = None,
 ) -> str:
     """Build the complete email-safe HTML document.
 
@@ -292,6 +294,14 @@ def _build_email_template(
               <p style="margin:10px 0 0; color:{COLORS['text_header_sub']}; font-size:14px; font-family:Arial,Helvetica,sans-serif;">
                 {_escape_html(date_range)}
               </p>'''
+
+    # Small brand line above the title when the title is the issue's own
+    eyebrow_row = ""
+    if eyebrow:
+        eyebrow_row = f'''<p style="margin:0 0 8px; color:{COLORS['text_header_sub']}; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; font-family:Arial,Helvetica,sans-serif;">
+                {_escape_html(eyebrow)}
+              </p>
+              '''
 
     # Build preheader div if we have preheader text
     preheader_div = ""
@@ -362,7 +372,7 @@ def _build_email_template(
           <!-- Header -->
           <tr>
             <td style="padding:28px 32px; background-color:{COLORS['bg_header']}; border-radius:8px 8px 0 0;">
-              <h1 style="margin:0; color:{COLORS['text_header']}; font-size:26px; font-weight:700; font-family:Arial,Helvetica,sans-serif; line-height:1.3;">
+              {eyebrow_row}<h1 style="margin:0; color:{COLORS['text_header']}; font-size:26px; font-weight:700; font-family:Arial,Helvetica,sans-serif; line-height:1.3;">
                 {_escape_html(title)}
               </h1>{date_row}
             </td>
@@ -420,10 +430,19 @@ def _render_sync(
 
     # Read and parse markdown
     markdown_text = markdown_path.read_text(encoding="utf-8")
-    # The generator's "# AI News Report: <dates>" heading is a parsing marker;
-    # the email header shows the newsletter name (dates render separately).
+    # The generator's "# AI News Report: <dates>" heading is a parsing marker.
+    # The header shows the editorial issue title under a brand line, or just
+    # the newsletter name for reports without one (dates render separately).
+    issue_title = extract_issue_title(markdown_text)
+    markdown_text = strip_issue_title(markdown_text)
     heading = _first_heading(markdown_text)
-    title = NEWSLETTER_NAME if not heading or heading.startswith("AI News Report") else heading
+    eyebrow = NEWSLETTER_NAME if issue_title else None
+    if issue_title:
+        title = issue_title
+    elif not heading or heading.startswith("AI News Report"):
+        title = NEWSLETTER_NAME
+    else:
+        title = heading
     start_date, end_date = _infer_date_range_from_name(markdown_path)
 
     # Convert markdown to HTML
@@ -452,6 +471,7 @@ def _render_sync(
         timestamp=now,
         preheader=preheader,
         mode=mode,
+        eyebrow=eyebrow,
     )
 
     # Write output

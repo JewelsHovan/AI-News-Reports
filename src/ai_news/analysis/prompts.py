@@ -1,6 +1,7 @@
 """Prompt templates for AI news analysis agents."""
 
 REPORT_TEMPLATE = '''# AI News Report: {start_date} to {end_date}
+**Issue title:** [4-9 word editorial title; see ISSUE TITLE RULES]
 
 ## Executive Summary
 [120-180 words total. Open with ONE specific, concrete fact from this period — a named event, number, launch, or decision — NOT a generalization about "the AI industry/landscape/field." Then 1 short narrative paragraph plus 3-5 bullets for the most important takeaways. Scannable; do not repeat details from later sections. Obey the OPENING & TONE RULES below — the first sentence is the most-judged line in the report.]
@@ -238,6 +239,12 @@ OPENING & TONE RULES (the Executive Summary's first sentence is the single most-
 - CALIBRATE THE DRAMA. Most weeks are incremental, not historic. Reserve "historic / unprecedented / breakthrough" for periods where a specific named event earns it. If it's a quiet or consolidating week, say so plainly — a calm, precise opening makes the genuinely big weeks land.
 - Vary the opening STRUCTURE between reports. Archetypes: lead with the number; the single biggest event; a sharp contradiction; a direct quote; or the open question the period raised.
 - DO NOT ECHO PRIOR REPORTS. Recent prior openings appear below (if provided) — your opening must not reuse their subject phrase, sentence structure, or framing.
+
+ISSUE TITLE RULES (the line right after the H1, used as the email subject and archive title):
+- Format exactly: **Issue title:** <title> on its own line directly below the "# AI News Report:" heading.
+- 4-9 words, sentence case, no trailing period, no quotes, no dates, and never "AI News" or the newsletter name.
+- Name 1-3 of the period's biggest stories concretely (companies, models, numbers): e.g. "Le Chonk, the agent budget trap and a $40B chip bet".
+- Wry or vivid is welcome; clickbait, vague teasers ("You won't believe...") and the banned opening words above are not.
 
 CITATION AND LINK RULES:
 - Use clickable Markdown links for all sources: [source/title](https://...)

@@ -41,6 +41,35 @@ def _encode_listing(listing: dict) -> str:
     return base64.b64encode(json.dumps(listing, ensure_ascii=False).encode("utf-8")).decode("ascii")
 
 
+def issue_number_for(reports: list[dict], start_date: str, end_date: str) -> int:
+    """Sequential issue number: 1 + distinct earlier date ranges in the archive.
+
+    Duplicate uploads of the same range share a number, and re-running a range
+    reproduces its number.
+    """
+    ranges = {(r["date_range_end"], r["date_range_start"]) for r in reports}
+    return sum(1 for rng in ranges if rng < (end_date, start_date)) + 1
+
+
+def _issue_number_sync(api_base: str, start_date: str, end_date: str) -> int | None:
+    try:
+        response = requests.get(f"{api_base}/archive", timeout=30)
+        response.raise_for_status()
+        reports = response.json()["data"]["reports"]
+    except (requests.RequestException, KeyError, TypeError, ValueError):
+        return None
+    return issue_number_for(reports, start_date, end_date)
+
+
+async def fetch_issue_number(
+    start_date: str,
+    end_date: str,
+    api_base: str = "https://ai-news-signup.julienh15.workers.dev",
+) -> int | None:
+    """Number for the issue covering start..end, from the public archive (None if unreachable)."""
+    return await asyncio.to_thread(_issue_number_sync, api_base, start_date, end_date)
+
+
 def _upload_sync(
     html_path: Path,
     start_date: str,

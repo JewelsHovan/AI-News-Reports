@@ -74,9 +74,21 @@
     return formatDateRange(report.date_range_start, report.date_range_end);
   }
 
-  // Headline if the report has one, otherwise the formatted date range.
+  function textOf(value) {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  // Editorial issue title, else the top headline, else the formatted date range.
   function headingOf(report) {
-    return (report.headline && String(report.headline).trim()) || rangeOf(report);
+    return textOf(report.issue_title) || textOf(report.headline) || rangeOf(report);
+  }
+
+  // "#69 · Oct 1 – 6, 2026"; the publish day stands in when the heading is already the range.
+  function dateLineOf(report) {
+    const hasTitle = !!(textOf(report.issue_title) || textOf(report.headline));
+    const when = hasTitle ? rangeOf(report) : 'Published ' + formatDay(report.generated_at || report.date_range_end);
+    const n = Number(report.issue_number);
+    return Number.isInteger(n) && n > 0 ? `#${n} · ${when}` : when;
   }
 
   function itemsLabel(report) {
@@ -137,20 +149,19 @@
     return archivePromise;
   }
 
-  // Top stories minus the one already shown as the headline.
+  // Top stories minus the one already shown as the heading.
   function otherStories(report) {
-    const headline = String(report.headline || '').trim();
-    return listOf(report.top_stories).filter((s) => String(s).trim() !== headline);
+    const heading = headingOf(report);
+    return listOf(report.top_stories).filter((s) => s.trim() !== heading);
   }
 
   // Card used on the home "Recent issues" grid and the archive (cards view).
   function issueCardHtml(report, opts) {
     opts = opts || {};
     const q = opts.query || '';
-    const hasHeadline = !!(report.headline && String(report.headline).trim());
     const stories = otherStories(report).slice(0, 3);
     const tags = listOf(report.tags);
-    const dateLine = hasHeadline ? rangeOf(report) : 'Published ' + formatDay(report.generated_at || report.date_range_end);
+    const dateLine = dateLineOf(report);
     let body = '';
     if (stories.length) {
       body = `<ul>${stories.map((s) => `<li>${highlight(s, q)}</li>`).join('')}</ul>`;
@@ -292,7 +303,7 @@
   window.Brief = {
     NAME, BYLINE, API_BASE, ROOT,
     escapeHtml, highlight, formatDateRange, formatDay, monthLabel, parseDay,
-    rangeOf, headingOf, itemsLabel, listOf, otherStories, issueHref, reportUrl,
+    rangeOf, headingOf, dateLineOf, itemsLabel, listOf, otherStories, issueHref, reportUrl,
     compareReports, dedupe, fetchArchive, issueCardHtml, mountSignup,
   };
 })();

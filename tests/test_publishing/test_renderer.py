@@ -106,3 +106,22 @@ async def test_render_html_default_title(tmp_path):
 
     result = await render_html(md_path)
     assert result.title == "Julien's AI Brief"
+
+
+@pytest.mark.asyncio
+async def test_render_html_uses_issue_title_in_header(tmp_path):
+    """The editorial issue title becomes the header H1 under a brand line, and leaves the body."""
+    md_path = tmp_path / "ai-news_2026-10-01_to_2026-10-06.md"
+    md_path.write_text(
+        "# AI News Report: 2026-10-01 to 2026-10-06\n"
+        "**Issue title:** Le Chonk and a $40B chip bet\n\n"
+        "## Executive Summary\n\nMistral previewed a big model.\n"
+    )
+
+    result = await render_html(md_path)
+    html = result.html_path.read_text()
+
+    assert result.title == "Le Chonk and a $40B chip bet"
+    header = html.split("<!-- Body -->")[0]
+    assert "text-transform:uppercase" in header and "Julien's AI Brief" in header
+    assert "Issue title" not in html

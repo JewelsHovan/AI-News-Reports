@@ -2,7 +2,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from ai_news.publishing.cloudflare import upload_report, UploadResult
+from ai_news.publishing.cloudflare import issue_number_for, upload_report, UploadResult
 
 
 @pytest.mark.asyncio
@@ -177,3 +177,16 @@ async def test_upload_without_listing_omits_meta_header(tmp_path):
         )
 
     assert "X-Meta" not in mock_post.call_args.kwargs["headers"]
+
+
+def test_issue_number_counts_distinct_earlier_ranges():
+    reports = [
+        {"date_range_start": "2026-09-29", "date_range_end": "2026-10-01"},
+        {"date_range_start": "2026-09-22", "date_range_end": "2026-09-24"},
+        {"date_range_start": "2026-09-22", "date_range_end": "2026-09-24"},  # duplicate upload
+        {"date_range_start": "2026-09-19", "date_range_end": "2026-09-21"},
+    ]
+    assert issue_number_for(reports, "2026-10-01", "2026-10-06") == 4
+    # Re-running an existing range reproduces its number.
+    assert issue_number_for(reports, "2026-09-22", "2026-09-24") == 2
+    assert issue_number_for([], "2026-10-01", "2026-10-06") == 1

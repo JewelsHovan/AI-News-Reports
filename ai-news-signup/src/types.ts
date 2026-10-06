@@ -54,13 +54,15 @@ export interface ReportMeta {
   days: number;
   total_items: number;
   // Listing fields for archive cards (absent on older entries)
+  issue_title?: string;          // Editorial title, e.g. "Le Chonk and a $40B chip bet"
+  issue_number?: number;         // Sequential, shared by duplicate uploads of a range
   headline?: string;             // Top story #1
   tldr?: string;                 // First sentences of the executive summary
   top_stories?: string[];        // Up to 5 top-story titles
   tags?: string[];               // Up to 3 topic tags, e.g. "Agents"
 }
 
-export type ReportListing = Pick<ReportMeta, 'headline' | 'tldr' | 'top_stories' | 'tags'>;
+export type ReportListing = Pick<ReportMeta, 'issue_title' | 'issue_number' | 'headline' | 'tldr' | 'top_stories' | 'tags'>;
 
 export interface ArchiveIndex {
   reports: ReportMeta[];

@@ -7,7 +7,7 @@
   <meta name="description" content="Every issue of Julien's AI Brief. Search past issues by topic, company or paper.">
   <link rel="canonical" href="https://julienhovan.com/AI-News-Reports/archive/">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23c2410c'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EJH%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="../styles.css?v=4">
+  <link rel="stylesheet" href="../styles.css?v=5">
 </head>
 <body>
   <div class="site">
@@ -65,7 +65,7 @@
     <button type="button" class="x" id="cta-close" aria-label="Dismiss">×</button>
   </div>
 
-  <script src="../site.js?v=4"></script>
+  <script src="../site.js?v=5"></script>
   <script>
     (function () {
       const B = window.Brief;
@@ -160,7 +160,7 @@
 
       // ---- filtering + rendering ----
       function haystack(r) {
-        return [r.headline, r.tldr, B.listOf(r.top_stories).join(' '), r.title, B.rangeOf(r)]
+        return [r.issue_title, r.headline, r.tldr, B.listOf(r.top_stories).join(' '), r.title, B.rangeOf(r)]
           .filter(Boolean).join(' \n ').toLowerCase();
       }
 

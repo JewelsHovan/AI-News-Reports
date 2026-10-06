@@ -13,7 +13,7 @@
   <meta property="og:description" content="A free AI newsletter by Julien Hovan. Twice a week, the AI news worth your time, boiled down with sources.">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23c2410c'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EJH%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <div class="site">
@@ -82,7 +82,7 @@
     </footer>
   </div>
 
-  <script src="site.js?v=4"></script>
+  <script src="site.js?v=5"></script>
   <script>
     (function () {
       const B = window.Brief;
@@ -115,9 +115,8 @@
         document.getElementById('all-issues').textContent = `All ${reports.length} issues →`;
 
         const L = reports[0];
-        const hasHeadline = !!(L.headline && String(L.headline).trim());
         const stories = B.otherStories(L).slice(0, 3);
-        const meta = [hasHeadline ? B.rangeOf(L) : 'Published ' + B.formatDay(L.generated_at || L.date_range_end), B.itemsLabel(L)]
+        const meta = [B.dateLineOf(L), B.itemsLabel(L)]
           .filter(Boolean).join(' · ');
         latestEl.innerHTML = `
           <span class="tag">Latest issue</span>

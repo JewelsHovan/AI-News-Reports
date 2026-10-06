@@ -1,5 +1,5 @@
 """Tests for ai_news.publishing.listing."""
-from ai_news.publishing.listing import extract_listing
+from ai_news.publishing.listing import extract_issue_title, extract_listing, strip_issue_title
 
 REPORT = """# AI News Report: 2026-09-29 to 2026-10-01
 
@@ -78,4 +78,25 @@ def test_missing_sections_yield_empty_listing():
     assert listing.tldr is None
     assert listing.top_stories == []
     assert listing.tags == []
-    assert listing.to_dict() == {"headline": None, "tldr": None, "top_stories": [], "tags": []}
+    assert listing.issue_title is None
+    assert listing.to_dict() == {"issue_title": None, "headline": None, "tldr": None, "top_stories": [], "tags": []}
+
+
+def test_issue_title_extracted_and_cleaned():
+    md = REPORT.replace(
+        "# AI News Report: 2026-09-29 to 2026-10-01\n",
+        "# AI News Report: 2026-09-29 to 2026-10-01\n**Issue title:** \"Le Chonk, the **agent budget trap** and a $40B chip bet.\"\n",
+    )
+    assert extract_listing(md).issue_title == "Le Chonk, the agent budget trap and a $40B chip bet"
+
+
+def test_unfilled_issue_title_placeholder_is_ignored():
+    md = "# AI News Report: x\n**Issue title:** [4-9 word editorial title; see ISSUE TITLE RULES]\n"
+    assert extract_issue_title(md) is None
+
+
+def test_strip_issue_title_removes_only_that_line():
+    md = "# AI News Report: x\n**Issue title:** Big week\n\n## Executive Summary\n\nText.\n"
+    stripped = strip_issue_title(md)
+    assert "Issue title" not in stripped
+    assert stripped.startswith("# AI News Report: x\n\n## Executive Summary")

@@ -125,7 +125,7 @@ async def publish_report(
     """Run the publishing pipeline: persist -> render -> upload -> newsletter."""
     from ai_news.publishing.persist import write_report
     from ai_news.publishing.renderer import render_html
-    from ai_news.publishing.cloudflare import upload_report
+    from ai_news.publishing.cloudflare import fetch_issue_number, upload_report
     from ai_news.publishing.listing import extract_listing
     from ai_news.publishing.newsletter import send_newsletter
 
@@ -159,10 +159,15 @@ async def publish_report(
     result.html_path = render_result.html_path
     logger.info(f"  Rendered: {render_result.html_path}")
 
+    listing = extract_listing(persist_result.filepath.read_text(encoding="utf-8"))
+    issue_number = None
+    if not config.dry_run:
+        issue_number = await fetch_issue_number(start_date, end_date, api_base=config.api_base_url)
+        logger.info(f"  Issue #{issue_number}: {listing.issue_title or '(no issue title)'}")
+
     # Step 3: Upload to Cloudflare (if configured)
     if config.admin_api_secret and not config.dry_run:
         logger.info("Publishing: Uploading to Cloudflare...")
-        listing = extract_listing(persist_result.filepath.read_text(encoding="utf-8"))
         upload_result = await upload_report(
             html_path=render_result.html_path,
             start_date=start_date,
@@ -171,7 +176,7 @@ async def publish_report(
             total_items=total_items,
             api_secret=config.admin_api_secret,
             api_base=config.api_base_url,
-            listing=listing.to_dict(),
+            listing={**listing.to_dict(), "issue_number": issue_number},
         )
         if upload_result.success:
             result.upload_url = upload_result.url
@@ -195,6 +200,8 @@ async def publish_report(
                 else None
             ),
             api_secret=config.admin_api_secret,
+            issue_title=listing.issue_title,
+            issue_number=issue_number,
         )
         result.newsletter_sent = newsletter_result.sent_count
         if newsletter_result.errors:

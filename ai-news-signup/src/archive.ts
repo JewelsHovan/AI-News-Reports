@@ -31,7 +31,10 @@ function cleanList(value: unknown, maxItems: number, maxLen: number): string[] |
 function parseListing(raw: unknown): ReportListing {
   if (!raw || typeof raw !== 'object') return {};
   const r = raw as Record<string, unknown>;
+  const issueNumber = Number(r.issue_number);
   const listing: ReportListing = {
+    issue_title: cleanText(r.issue_title, 140),
+    issue_number: Number.isInteger(issueNumber) && issueNumber > 0 && issueNumber < 100000 ? issueNumber : undefined,
     headline: cleanText(r.headline, 200),
     tldr: cleanText(r.tldr),
     top_stories: cleanList(r.top_stories, MAX_STORIES, 200),
@@ -260,7 +263,7 @@ archiveRoute.patch('/:id', async (c) => {
     if (!body.title && !body.summary && Object.keys(listing).length === 0) {
       return c.json<ApiResponse>({
         success: false,
-        error: 'Request body must contain at least one of: title, summary, headline, tldr, top_stories, tags',
+        error: 'Request body must contain at least one of: title, summary, issue_title, issue_number, headline, tldr, top_stories, tags',
       }, 400);
     }
 

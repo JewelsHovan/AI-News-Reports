@@ -51,10 +51,13 @@ _TAG_PATTERNS = {
 # Sentence break after . ! or ? (optionally followed by a closing quote).
 _SENTENCE_END = re.compile(r"(?:(?<=[.!?])|(?<=[.!?][\"”’']))\s+(?=[A-Z\"“'(])")
 _STORY_HEADING = re.compile(r"^###\s+(?:Story\s+)?\d+[.:)]\s*(.+?)\s*$")
+_ISSUE_TITLE_LINE = re.compile(r"^\*\*Issue title:\*\*[ \t]*(.*?)[ \t]*$\n?", re.IGNORECASE | re.MULTILINE)
+MAX_ISSUE_TITLE_CHARS = 120
 
 
 @dataclass
 class ReportListing:
+    issue_title: str | None = None
     headline: str | None = None
     tldr: str | None = None
     top_stories: list[str] = field(default_factory=list)
@@ -70,6 +73,22 @@ def _clean_inline(text: str) -> str:
     text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"(\*\*|__|\*|`)", "", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def extract_issue_title(markdown: str) -> str | None:
+    """Return the editorial title from the '**Issue title:**' line, if any."""
+    match = _ISSUE_TITLE_LINE.search(markdown)
+    if not match:
+        return None
+    title = _clean_inline(match.group(1)).strip("\"'“”‘’ ").rstrip(".")
+    if not title or title.startswith("["):  # empty or unfilled template placeholder
+        return None
+    return title[:MAX_ISSUE_TITLE_CHARS]
+
+
+def strip_issue_title(markdown: str) -> str:
+    """Remove the '**Issue title:**' line so it doesn't render in the body."""
+    return _ISSUE_TITLE_LINE.sub("", markdown, count=1)
 
 
 def _section(lines: list[str], heading_prefix: str) -> list[str]:
@@ -147,6 +166,7 @@ def extract_listing(markdown: str) -> ReportListing:
     tldr = _shorten(summary) if summary else None
     stories = _top_stories(lines)
     return ReportListing(
+        issue_title=extract_issue_title(markdown),
         headline=stories[0] if stories else None,
         tldr=tldr,
         top_stories=stories,

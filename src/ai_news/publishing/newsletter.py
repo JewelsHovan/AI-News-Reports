@@ -234,6 +234,12 @@ def _build_subject(template: str, context: dict[str, str]) -> str:
     return rendered or context.get("title", NEWSLETTER_NAME)
 
 
+def _issue_subject(issue_title: str, issue_number: int | None) -> str:
+    """Subject for an issue with an editorial title, e.g. "<name> #69: <title>"."""
+    prefix = f"{NEWSLETTER_NAME} #{issue_number}" if issue_number else NEWSLETTER_NAME
+    return f"{prefix}: {issue_title}"
+
+
 # =============================================================================
 # Auth & Keychain
 # =============================================================================
@@ -466,6 +472,8 @@ def _send_newsletter_sync(
     dry_run: bool,
     test_email: str | None,
     force: bool,
+    issue_title: str | None = None,
+    issue_number: int | None = None,
 ) -> NewsletterResult:
     """Synchronous implementation of the newsletter sending logic."""
     config = _load_json(email_config_path)
@@ -526,6 +534,8 @@ def _send_newsletter_sync(
             "generated_at": manifest.get("generated_at", ""),
         },
     )
+    if issue_title:
+        subject = _issue_subject(issue_title, issue_number)
 
     sender_email = config.get("sender_email", "")
     verbose = True  # Always verbose when used as a library (logs go to stderr)
@@ -643,6 +653,8 @@ async def send_newsletter(
     dry_run: bool = False,
     test_email: str | None = None,
     force: bool = False,
+    issue_title: str | None = None,
+    issue_number: int | None = None,
 ) -> NewsletterResult:
     """Send newsletter to subscribers via Microsoft Graph.
 
@@ -660,6 +672,9 @@ async def send_newsletter(
         dry_run: If True, log what would be sent without actually sending.
         test_email: If set, send only to this email address (overrides recipients).
         force: If True, ignore the sent log and re-send to all recipients.
+        issue_title: Editorial issue title; when set, the subject becomes
+            "<name> #<issue_number>: <issue_title>" instead of the template.
+        issue_number: Sequential issue number for the subject.
 
     Returns:
         NewsletterResult with sent count, skipped count, and any errors.
@@ -678,4 +693,6 @@ async def send_newsletter(
         dry_run,
         test_email,
         force,
+        issue_title,
+        issue_number,
     )

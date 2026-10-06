@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Julien's AI Brief</title>
+  <meta name="description" content="An issue of Julien's AI Brief: what matters in AI, without the firehose.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23c2410c'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EJH%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css?v=3">
+</head>
+<body>
+  <div class="site">
+    <header class="nav">
+      <a class="brand" href="index.html">
+        <span class="avatar" aria-hidden="true">JH</span>
+        <span><span class="wordmark">Julien's AI Brief</span><br><span class="byline">by Julien Hovan</span></span>
+      </a>
+      <nav class="navlinks" aria-label="Main">
+        <a href="archive/">Archive</a>
+        <a class="hide-sm" id="nav-latest" href="issue.html">Latest</a>
+        <a class="btn sm" href="index.html#subscribe">Subscribe</a>
+      </nav>
+    </header>
+
+    <div class="reader">
+      <aside class="toc" aria-label="In this issue">
+        <div id="toc" class="hidden">
+          <b>In this issue</b>
+          <nav id="toc-links"></nav>
+        </div>
+        <a class="linkbtn back" href="archive/">← Back to archive</a>
+      </aside>
+
+      <article id="article" aria-busy="true">
+        <a class="linkbtn back-sm" href="archive/">← Back to archive</a>
+        <div class="meta" id="meta"><span class="skel skel-line sm" style="display:block"></span></div>
+        <h1 id="headline"><span class="skel skel-line lg" style="display:block"></span></h1>
+        <div class="chips hidden" id="tags"></div>
+        <div class="tldr hidden" id="tldr"></div>
+        <section class="top-stories hidden" id="stories" aria-labelledby="stories-h">
+          <h2 id="stories-h">Top stories</h2>
+          <ol></ol>
+        </section>
+
+        <div class="report-frame-wrap" id="report">
+          <div class="skel skel-block" id="report-skel"></div>
+        </div>
+
+        <div class="endcta">
+          <h3>Enjoyed this?</h3>
+          <p class="meta">Get the next one in your inbox Monday or Thursday morning.</p>
+          <div id="signup-end"></div>
+        </div>
+
+        <nav class="prevnext hidden" id="prevnext" aria-label="More issues"></nav>
+      </article>
+    </div>
+
+    <footer class="footer">
+      <span>© 2026 Julien's AI Brief · Julien Hovan</span>
+      <span><a href="archive/">Archive</a> · <a href="issue.html">Latest issue</a></span>
+    </footer>
+  </div>
+
+  <script src="site.js"></script>
+  <script>
+    (function () {
+      const B = window.Brief;
+      const $ = (id) => document.getElementById(id);
+      const requestedId = new URLSearchParams(location.search).get('id');
+
+      B.mountSignup($('signup-end'));
+      if (!requestedId) $('nav-latest').setAttribute('aria-current', 'page');
+
+      let readMinutes = null;
+      let current = null;
+
+      function renderMeta() {
+        const parts = [];
+        if (current) {
+          const hasHeadline = !!(current.headline && String(current.headline).trim());
+          parts.push(hasHeadline ? B.rangeOf(current) : 'Published ' + B.formatDay(current.generated_at || current.date_range_end));
+          if (B.itemsLabel(current)) parts.push(B.itemsLabel(current));
+        }
+        if (readMinutes) parts.push(`~${readMinutes} min read`);
+        $('meta').textContent = parts.join(' · ');
+      }
+
+      function renderHeader(r) {
+        current = r;
+        const heading = B.headingOf(r);
+        $('headline').textContent = heading;
+        document.title = `${heading} — ${B.NAME}`;
+        renderMeta();
+
+        const tags = B.listOf(r.tags);
+        if (tags.length) {
+          $('tags').innerHTML = tags.map((t) =>
+            `<a class="chip" href="archive/?tag=${encodeURIComponent(t)}">${B.escapeHtml(t)}</a>`).join('');
+          $('tags').classList.remove('hidden');
+        }
+        if (r.tldr) {
+          $('tldr').innerHTML = `<b>TL;DR</b> ${B.escapeHtml(r.tldr)}`;
+          $('tldr').classList.remove('hidden');
+        }
+        const stories = B.listOf(r.top_stories);
+        if (stories.length) {
+          $('stories').querySelector('ol').innerHTML = stories.map((s) => `<li>${B.escapeHtml(s)}</li>`).join('');
+          $('stories').classList.remove('hidden');
+        }
+      }
+
+      function renderPrevNext(list, index) {
+        const older = list[index + 1];
+        const newer = list[index - 1];
+        const cell = (r, label, cls, fallback) => r
+          ? `<a class="${cls}" href="${B.escapeHtml(B.issueHref(r.id))}"><small>${label}</small>${B.escapeHtml(B.headingOf(r))}</a>`
+          : `<span class="${cls}" aria-disabled="true"><small>${label}</small>${fallback}</span>`;
+        $('prevnext').innerHTML =
+          cell(older, '← Older', 'prev', 'This is the first issue') +
+          cell(newer, 'Newer →', 'next', "You're on the latest");
+        $('prevnext').classList.remove('hidden');
+      }
+
+      function showReportError(id, message) {
+        const raw = id ? B.reportUrl(id) : B.API_BASE + '/archive';
+        $('report').innerHTML = `<div class="load-error"><strong>${B.escapeHtml(message)}</strong>
+          Try reloading, or <a href="${B.escapeHtml(raw)}" target="_blank" rel="noopener">open the raw report</a>.</div>`;
+        $('article').setAttribute('aria-busy', 'false');
+      }
+
+      // Turn the email-style report into a srcdoc for a sandboxed iframe.
+      function prepareReport(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        // The email's subscriber footer has an unfilled {UNSUBSCRIBE_LINK} placeholder.
+        doc.querySelectorAll('a[href*="UNSUBSCRIBE_LINK"]').forEach((a) => {
+          const box = a.closest('div') || a;
+          box.remove();
+        });
+
+        // The email's dark title bar ("AI News Report: <dates>") repeats the page heading.
+        const titleRow = doc.querySelector('.content-container > tbody > tr:first-child');
+        if (titleRow && titleRow.querySelector('h1') && !titleRow.querySelector('h2')) titleRow.remove();
+
+        // Read time from visible text (skip the hidden inbox preheader).
+        const clone = doc.body.cloneNode(true);
+        clone.querySelectorAll('style, script, [style*="display:none"], [style*="display: none"]').forEach((el) => el.remove());
+        const words = (clone.textContent.match(/\S+/g) || []).length;
+
+        const base = doc.createElement('base');
+        base.setAttribute('target', '_blank');
+        const style = doc.createElement('style');
+        style.textContent = 'html,body,.email-wrapper{background:transparent!important}' +
+          'body{overflow:hidden}.email-wrapper>tbody>tr>td,.email-wrapper>tr>td{padding:0!important}' +
+          '.content-container{box-shadow:none!important;border:1px solid #e4e0d6;margin:0!important;max-width:100%!important}';
+        doc.head.prepend(base);
+        doc.head.appendChild(style);
+
+        return { srcdoc: '<!DOCTYPE html>\n' + doc.documentElement.outerHTML, words };
+      }
+
+      function buildToc(frame) {
+        const fdoc = frame.contentDocument;
+        if (!fdoc) return;
+        const heads = [...fdoc.querySelectorAll('h2')].filter((h) => !/report metadata/i.test(h.textContent));
+        if (heads.length < 2) return;
+        const links = $('toc-links');
+        links.innerHTML = heads.map((h, i) =>
+          `<a href="#section-${i + 1}" data-i="${i}">${B.escapeHtml(h.textContent.trim())}</a>`).join('');
+        $('toc').classList.remove('hidden');
+
+        const topOf = (h) => frame.getBoundingClientRect().top + window.scrollY + h.getBoundingClientRect().top;
+        links.addEventListener('click', (e) => {
+          const a = e.target.closest('a[data-i]');
+          if (!a) return;
+          e.preventDefault();
+          window.scrollTo({ top: topOf(heads[+a.dataset.i]) - 16, behavior: 'smooth' });
+        });
+
+        const anchors = [...links.querySelectorAll('a')];
+        let ticking = false;
+        function markActive() {
+          ticking = false;
+          let active = 0;
+          heads.forEach((h, i) => { if (topOf(h) - 80 <= window.scrollY) active = i; });
+          anchors.forEach((a, i) => a.classList.toggle('on', i === active));
+        }
+        window.addEventListener('scroll', () => {
+          if (!ticking) { ticking = true; requestAnimationFrame(markActive); }
+        }, { passive: true });
+        markActive();
+      }
+
+      function mountReport(id, html) {
+        const { srcdoc, words } = prepareReport(html);
+        readMinutes = Math.max(1, Math.round(words / 230));
+        renderMeta();
+
+        const frame = document.createElement('iframe');
+        frame.className = 'report-frame';
+        frame.title = 'Full report';
+        frame.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
+        frame.setAttribute('scrolling', 'no');
+        frame.style.colorScheme = 'light';
+
+        function fit() {
+          const d = frame.contentDocument;
+          if (!d || !d.body) return;
+          const h = Math.max(d.body.scrollHeight, d.documentElement.scrollHeight);
+          frame.style.height = h + 'px';
+        }
+
+        frame.addEventListener('load', () => {
+          fit();
+          const d = frame.contentDocument;
+          if (d && d.body && 'ResizeObserver' in window) new ResizeObserver(fit).observe(d.body);
+          window.addEventListener('resize', fit);
+          buildToc(frame);
+          $('report-skel') && $('report-skel').remove();
+          $('article').setAttribute('aria-busy', 'false');
+        }, { once: true });
+
+        frame.srcdoc = srcdoc;
+        const raw = document.createElement('p');
+        raw.className = 'report-raw';
+        raw.innerHTML = `<a href="${B.escapeHtml(B.reportUrl(id))}" target="_blank" rel="noopener">Open the email version ↗</a>`;
+        $('report').append(frame, raw);
+      }
+
+      function loadReport(id) {
+        return fetch(B.reportUrl(id))
+          .then((res) => {
+            if (!res.ok) throw new Error(`Report request failed (${res.status})`);
+            return res.text();
+          })
+          .then((html) => mountReport(id, html))
+          .catch((err) => {
+            console.warn('Could not load report:', err);
+            showReportError(id, "Couldn't load this issue.");
+          });
+      }
+
+      B.fetchArchive().then(({ reports, all }) => {
+        if (!reports.length) {
+          $('headline').textContent = 'No issues yet';
+          $('meta').textContent = '';
+          $('report').innerHTML = '<div class="empty">The first issue is on its way.</div>';
+          return;
+        }
+        let meta = requestedId ? reports.find((r) => r.id === requestedId) : reports[0];
+        let index = meta ? reports.indexOf(meta) : -1;
+        if (requestedId && !meta) {
+          // A superseded duplicate: show it, but navigate relative to its date range.
+          meta = all.find((r) => r.id === requestedId);
+          if (meta) {
+            index = reports.findIndex((r) => r.date_range_start === meta.date_range_start && r.date_range_end === meta.date_range_end);
+          }
+        }
+        if (!meta) {
+          $('headline').textContent = 'Issue not found';
+          $('meta').textContent = '';
+          document.title = `Issue not found — ${B.NAME}`;
+          $('report').innerHTML = `<div class="load-error"><strong>We couldn't find that issue.</strong>
+            <a href="archive/">Browse the archive</a> or <a href="issue.html">read the latest issue</a>.</div>`;
+          $('article').setAttribute('aria-busy', 'false');
+          return;
+        }
+        renderHeader(meta);
+        if (index !== -1) renderPrevNext(reports, index);
+        return loadReport(meta.id);
+      }).catch((err) => {
+        console.warn('Could not load archive:', err);
+        if (requestedId) {
+          // The index is down but the report itself may still load.
+          $('headline').textContent = 'AI news report';
+          $('meta').textContent = '';
+          return loadReport(requestedId);
+        }
+        $('headline').textContent = "Couldn't load the latest issue";
+        $('meta').textContent = '';
+        showReportError(null, 'The archive is unavailable right now.');
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,17 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You're Subscribed! - AI News</title>
-  <link rel="stylesheet" href="styles.css?v=2">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>You're subscribed — Julien's AI Brief</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23c2410c'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EJH%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
-  <main class="container" style="text-align: center;">
-    <div class="status-icon success">&#10003;</div>
-    <h1>You're Subscribed!</h1>
-    <p class="subtitle">Welcome aboard! You'll receive the next newsletter soon.</p>
-    <a href="index.html" class="back-link">&larr; Back to home</a>
-  </main>
+  <div class="site">
+    <header class="nav">
+      <a class="brand" href="index.html">
+        <span class="avatar" aria-hidden="true">JH</span>
+        <span><span class="wordmark">Julien's AI Brief</span><br><span class="byline">by Julien Hovan</span></span>
+      </a>
+      <nav class="navlinks" aria-label="Main">
+        <a href="archive/">Archive</a>
+        <a href="issue.html">Latest</a>
+      </nav>
+    </header>
+
+    <main class="status">
+      <div class="icon" aria-hidden="true">✓</div>
+      <h1>You're subscribed</h1>
+      <p class="lead">Welcome aboard! Your email is confirmed and you'll get the next issue of Julien's AI Brief soon.</p>
+      <ol class="steps">
+        <li>Issues arrive <b>Monday and Thursday</b>, around 8am ET.</li>
+        <li>Add <b>julien.hovan@compassdata.ca</b> to your contacts so they don't land in spam.</li>
+      </ol>
+      <div class="actions">
+        <a class="btn" href="issue.html">Read the latest issue →</a>
+        <a class="btn ghost" href="archive/">Browse the archive</a>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span>© 2026 Julien's AI Brief · Julien Hovan</span>
+      <span><a href="archive/">Archive</a> · <a href="issue.html">Latest issue</a></span>
+    </footer>
+  </div>
 </body>
 </html>

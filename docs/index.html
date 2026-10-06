@@ -1,130 +1,148 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Subscribe to Compass AI News</title>
-    <link rel="stylesheet" href="styles.css?v=2" />
-    <script
-      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-      async
-      defer
-    ></script>
-  </head>
-  <body>
-    <main class="container">
-      <h1>Subscribe to Compass AI News</h1>
-      <p class="subtitle">
-        Get curated AI news delivered to your inbox every few days. No spam,
-        unsubscribe anytime.
-      </p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Julien's AI Brief — What matters in AI, without the firehose</title>
+  <meta name="description" content="A free AI newsletter by Julien Hovan. Twice a week (Mon & Thu), the AI research, launches and industry news worth your time, boiled down with sources.">
+  <link rel="canonical" href="https://julienhovan.com/AI-News-Reports/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://julienhovan.com/AI-News-Reports/">
+  <meta property="og:site_name" content="Julien's AI Brief">
+  <meta property="og:title" content="Julien's AI Brief — What matters in AI, without the firehose">
+  <meta property="og:description" content="A free AI newsletter by Julien Hovan. Twice a week, the AI news worth your time, boiled down with sources.">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23c2410c'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EJH%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css?v=3">
+</head>
+<body>
+  <div class="site">
+    <header class="nav">
+      <a class="brand" href="index.html" aria-current="page">
+        <span class="avatar" aria-hidden="true">JH</span>
+        <span><span class="wordmark">Julien's AI Brief</span><br><span class="byline">by Julien Hovan</span></span>
+      </a>
+      <nav class="navlinks" aria-label="Main">
+        <a href="archive/">Archive</a>
+        <a href="issue.html">Latest</a>
+      </nav>
+    </header>
 
-      <p class="archive-link-container">
-        <a href="archive/" class="archive-link">Browse past reports →</a>
-      </p>
-
-      <form id="signup-form">
-        <div class="form-group">
-          <label for="name">Name (optional)</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            placeholder="Your name"
-            autocomplete="name"
-          />
+    <main>
+      <section class="hero">
+        <div id="subscribe">
+          <div class="eyebrow">Free · twice a week · Mon &amp; Thu</div>
+          <h1 class="big">What matters in AI, without the firehose.</h1>
+          <p class="lede">I go through hundreds of papers, posts and launches every few days and boil them down to the stories worth your time, with sources. A two-minute summary up top, deep dives below.</p>
+          <div id="signup-hero"></div>
+          <div class="proof">
+            <span id="proof-count" class="hidden"></span>
+            <span>Sources for every story</span>
+            <span>One-click unsubscribe</span>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            required
-            placeholder="you@example.com"
-            autocomplete="email"
-          />
+        <div class="latest-card" id="latest-card" aria-live="polite">
+          <span class="tag">Latest issue</span>
+          <div class="skel skel-line sm"></div>
+          <div class="skel skel-line lg"></div>
+          <div class="skel skel-line"></div>
+          <div class="skel skel-line"></div>
         </div>
+      </section>
 
-        <div class="turnstile-container">
-          <div
-            class="cf-turnstile"
-            data-sitekey="0x4AAAAAACJzh42Fo2l_kMqP"
-            data-callback="onTurnstileSuccess"
-            data-theme="auto"
-          ></div>
+      <section class="section" id="recent-section">
+        <div class="row-head">
+          <div>
+            <h2>Recent issues</h2>
+            <p class="sub">Read any of them, no signup needed.</p>
+          </div>
+          <a class="linkbtn" id="all-issues" href="archive/">Browse the archive →</a>
         </div>
+        <div class="issues" id="recent">
+          <div class="skel skel-card"></div><div class="skel skel-card"></div>
+          <div class="skel skel-card"></div><div class="skel skel-card"></div>
+        </div>
+      </section>
 
-        <button type="submit" id="submit-btn" disabled>Subscribe</button>
-        <p id="error-message" class="error hidden"></p>
-      </form>
+      <section class="section">
+        <h2>What's in each issue</h2>
+        <p class="sub">Same layout every time, so it's easy to skim.</p>
+        <div class="what">
+          <div><b>⚡ Executive summary</b><p>The two-minute version: the big stories and the key takeaways.</p></div>
+          <div><b>🔬 Research &amp; trends</b><p>Papers of the week and trend deep dives, written for engineers.</p></div>
+          <div><b>💬 Industry &amp; community</b><p>Funding, launches and policy, plus what practitioners are saying.</p></div>
+        </div>
+      </section>
     </main>
 
-    <script>
-      const WORKER_URL = "https://ai-news-signup.julienh15.workers.dev";
+    <footer class="footer">
+      <span>© 2026 Julien's AI Brief · Julien Hovan</span>
+      <span><a href="archive/">Archive</a> · <a href="issue.html">Latest issue</a></span>
+    </footer>
+  </div>
 
-      const form = document.getElementById("signup-form");
-      const submitBtn = document.getElementById("submit-btn");
-      const errorMessage = document.getElementById("error-message");
-      let turnstileToken = null;
+  <script src="site.js"></script>
+  <script>
+    (function () {
+      const B = window.Brief;
+      const hero = B.mountSignup(document.getElementById('signup-hero'), { emailId: 'email' });
 
-      window.onTurnstileSuccess = function (token) {
-        turnstileToken = token;
-        submitBtn.disabled = false;
-      };
+      function focusSignup() {
+        if (location.hash === '#subscribe') {
+          hero.email.focus({ preventScroll: true });
+          document.getElementById('subscribe').scrollIntoView({ block: 'start' });
+        }
+      }
+      // Wait for the browser's own fragment scroll, which otherwise resets focus.
+      if (document.readyState === 'complete') setTimeout(focusSignup, 0);
+      else window.addEventListener('load', () => setTimeout(focusSignup, 0));
+      window.addEventListener('hashchange', focusSignup);
 
-      form.addEventListener("submit", async function (e) {
-        e.preventDefault();
-        errorMessage.classList.add("hidden");
+      const latestEl = document.getElementById('latest-card');
+      const recentEl = document.getElementById('recent');
 
-        const email = document.getElementById("email").value.trim();
-        const name = document.getElementById("name").value.trim();
-
-        if (!email) {
-          showError("Please enter your email.");
+      B.fetchArchive().then(({ reports }) => {
+        if (!reports.length) {
+          latestEl.innerHTML = '<span class="tag">Latest issue</span><p class="summary">The first issue is on its way.</p>';
+          document.getElementById('recent-section').classList.add('hidden');
           return;
         }
-        if (!turnstileToken) {
-          showError("Please complete verification.");
-          return;
-        }
 
-        submitBtn.disabled = true;
-        submitBtn.classList.add("loading");
+        const proof = document.getElementById('proof-count');
+        proof.textContent = `${reports.length} issues and counting`;
+        proof.classList.remove('hidden');
+        document.getElementById('all-issues').textContent = `All ${reports.length} issues →`;
 
-        try {
-          const res = await fetch(WORKER_URL + "/subscribe", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email,
-              name: name || undefined,
-              turnstileToken,
-            }),
-          });
-          const data = await res.json();
-          if (res.ok) {
-            window.location.href = "success.html";
-          } else {
-            showError(data.error || "Something went wrong.");
-            resetBtn();
-          }
-        } catch (err) {
-          showError("Unable to connect. Check your connection.");
-          resetBtn();
+        const L = reports[0];
+        const hasHeadline = !!(L.headline && String(L.headline).trim());
+        const stories = B.listOf(L.top_stories).slice(0, 3);
+        const meta = [hasHeadline ? B.rangeOf(L) : 'Published ' + B.formatDay(L.generated_at || L.date_range_end), B.itemsLabel(L)]
+          .filter(Boolean).join(' · ');
+        latestEl.innerHTML = `
+          <span class="tag">Latest issue</span>
+          <div class="meta">${B.escapeHtml(meta)}</div>
+          <h3><a href="${B.escapeHtml(B.issueHref(L.id))}">${B.escapeHtml(B.headingOf(L))}</a></h3>
+          ${L.tldr
+            ? `<p class="summary">${B.escapeHtml(L.tldr)}</p>`
+            : stories.length ? '' : '<p class="summary">Top stories, trend deep dives, research highlights and community pulse, all in one read.</p>'}
+          ${stories.length ? `<ol>${stories.map((s) => `<li>${B.escapeHtml(s)}</li>`).join('')}</ol>` : ''}
+          <a class="linkbtn" href="${B.escapeHtml(B.issueHref(L.id))}">Read the full issue →</a>`;
+
+        const recent = reports.slice(1, 5);
+        if (recent.length) {
+          recentEl.innerHTML = recent.map((r) => B.issueCardHtml(r)).join('');
+        } else {
+          document.getElementById('recent-section').classList.add('hidden');
         }
+      }).catch((err) => {
+        console.warn('Could not load archive:', err);
+        latestEl.innerHTML = `<span class="tag">Latest issue</span>
+          <p class="summary">Couldn't load the latest issue right now.</p>
+          <a class="linkbtn" href="issue.html">Try opening it directly →</a>`;
+        recentEl.innerHTML = '<p class="meta">Recent issues are unavailable right now. <a href="archive/">Open the archive</a>.</p>';
       });
-
-      function showError(msg) {
-        errorMessage.textContent = msg;
-        errorMessage.classList.remove("hidden");
-      }
-
-      function resetBtn() {
-        submitBtn.classList.remove("loading");
-        if (turnstileToken) submitBtn.disabled = false;
-      }
-    </script>
-  </body>
+    })();
+  </script>
+</body>
 </html>

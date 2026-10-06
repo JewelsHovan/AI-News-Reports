@@ -106,13 +106,13 @@ REPORT_TEMPLATE = '''# AI News Report: {start_date} to {end_date}
 COMMUNITY_EXPLORER_PROMPT = """You are analyzing Reddit community discussions about AI for a news digest.
 
 Analyze the provided Reddit data and return structured analysis covering:
-1. **Hot Topics** (top 5-7): highest engagement, title, score, subreddit, why it's generating discussion
-2. **Major Debates**: 2-3 key debates with different positions
+1. **Hot Topics** (top 5-7): title, subreddit, why it's generating discussion; rank by engagement ONLY when scores are present
+2. **Major Debates**: 2-3 key debates with different positions supported by the data
 3. **Community Sentiment**: Overall mood, what excites/concerns people
-4. **Notable Posts**: 5-10 most significant with title, URL, score, comments, key insight
-5. **Emerging Interests**: New topics gaining traction
+4. **Notable Posts**: 5-10 most significant with title, URL, key insight; include score/comments ONLY when provided
+5. **Emerging Interests**: New topics gaining traction when supported by the data
 
-Return as structured analysis, not raw JSON."""
+RSS fallback posts have null score/comments and limited detail: do not invent engagement, reactions, or debate positions. Note this limitation in your analysis. Return structured analysis, not raw JSON."""
 
 RESEARCH_EXPLORER_PROMPT = """You are analyzing AI research papers from HuggingFace for a news digest.
 

@@ -1,6 +1,8 @@
 """Tests for all 8 fetcher modules."""
 import json
 import time
+import urllib.error
+from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -93,15 +95,75 @@ class TestRedditFetcher:
 
     @pytest.mark.asyncio
     async def test_fetch_error(self):
-        # reddit swallows per-subreddit errors in _fetch_subreddit,
-        # so urlopen failures result in success with 0 items
-        with patch('urllib.request.urlopen', side_effect=Exception("Network error")):
+        # Both JSON and RSS failing must not count Reddit as a successful source.
+        with patch('urllib.request.urlopen', side_effect=urllib.error.HTTPError(
+            'https://www.reddit.com/', 403, 'Forbidden', {}, None
+        )):
             from ai_news.fetchers.reddit import fetch
             result = await fetch(days=1)
 
-        assert result.success
+        assert not result.success
         assert result.items == []
+        assert 'HTTP 403' in result.error
+
+    @pytest.mark.asyncio
+    async def test_empty_successful_json_listing_is_not_an_error(self):
+        listing = _make_mock_response('{"data": {"children": []}}')
+        with patch('urllib.request.urlopen', return_value=listing):
+            from ai_news.fetchers.reddit import fetch
+            result = await fetch(days=1)
+        assert result.success
         assert result.items_found == 0
+        assert result.metadata['fetch_method'] == 'json'
+
+    @pytest.mark.asyncio
+    async def test_rss_fallback_reports_missing_engagement(self):
+        published = datetime.now(timezone.utc).isoformat()
+        feed = f'''<feed xmlns="http://www.w3.org/2005/Atom"><entry>
+          <id>t3_example</id><title>Claude agent released</title>
+          <published>{published}</published><author><name>/u/example</name></author>
+          <link href="https://www.reddit.com/r/LocalLLaMA/comments/example/agent/" />
+        </entry></feed>'''
+        def response(req, timeout):
+            if req.full_url.endswith('.rss'):
+                return _make_mock_response(feed)
+            raise urllib.error.HTTPError(req.full_url, 403, 'Forbidden', {}, None)
+        with patch('urllib.request.urlopen', side_effect=response), patch('ai_news.fetchers.reddit.time.sleep'):
+            from ai_news.fetchers.reddit import fetch
+            result = await fetch(days=1)
+        assert result.success
+        assert result.items_found == 1  # deduplicated across feeds
+        assert result.metadata['fetch_method'] == 'rss'
+        assert result.metadata['subreddits'] == ['LocalLLaMA', 'MachineLearning', 'ClaudeAI']
+        assert result.metadata['community_sentiment']['avg_score'] is None
+        assert result.items[0]['score'] is None
+        assert result.items[0]['comments'] is None
+        assert result.items[0]['url'].startswith('https://www.reddit.com/r/')
+
+    @pytest.mark.asyncio
+    async def test_rss_empty_feed_does_not_claim_success(self):
+        feed = '<feed xmlns="http://www.w3.org/2005/Atom" />'
+        def response(req, timeout):
+            if req.full_url.endswith('.rss'):
+                return _make_mock_response(feed)
+            raise urllib.error.HTTPError(req.full_url, 403, 'Forbidden', {}, None)
+        with patch('urllib.request.urlopen', side_effect=response), patch('ai_news.fetchers.reddit.time.sleep'):
+            from ai_news.fetchers.reddit import fetch
+            result = await fetch(days=1)
+        assert not result.success
+        assert result.items_found == 0
+
+    @pytest.mark.asyncio
+    async def test_rss_rate_limit_does_not_claim_success(self):
+        def response(req, timeout):
+            code = 429 if req.full_url.endswith('.rss') else 403
+            raise urllib.error.HTTPError(req.full_url, code, 'Blocked', {}, None)
+        with patch('urllib.request.urlopen', side_effect=response) as urlopen:
+            from ai_news.fetchers.reddit import fetch
+            result = await fetch(days=1)
+        assert not result.success
+        assert 'HTTP 429' in result.error
+        assert urlopen.call_count == 2  # do not hammer blocked endpoints
 
 
 # ---------------------------------------------------------------------------

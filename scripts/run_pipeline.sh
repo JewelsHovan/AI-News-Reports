@@ -33,12 +33,6 @@ if ! command -v uv &>/dev/null; then
     exit 1
 fi
 
-# Check ANTHROPIC_API_KEY is set
-if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    echo "ERROR: ANTHROPIC_API_KEY is not set"
-    exit 1
-fi
-
 # Lockfile guard — prevent concurrent runs
 LOCK_DIR="${REPO_ROOT}/.pipeline.lock"
 if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
